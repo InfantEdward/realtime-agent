@@ -83,8 +83,9 @@ class OpenAIRealtimeAgent:
             input_transcript = None
 
             async for event in conn:
+                self.logger.info("Event type: " + event.type)
                 if self.log_events:
-                    self.logger.info(f"Event: {event}")
+                    self.logger.info(f"Event: {str(event)}")
                 evt_type = event.type
 
                 if evt_type == "session.created":

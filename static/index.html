@@ -1,68 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Realtime Agent App</title>
+  <!-- Use classic, elegant fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link 
+    href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap" 
+    rel="stylesheet"
+  >
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 2rem;
+    /* Global Reset */
+    * {
+      box-sizing: border-box;
     }
+    /* Body with new background */
+    body {
+      margin: 0;
+      padding: 10px;
+      background: url("/static/app_background.webp") no-repeat center center fixed;
+      background-size: cover;
+      color: #EDE0D4;
+      font-family: 'Open Sans', sans-serif;
+      line-height: 1.6;
+    }
+    /* Dark Overlay for Better Contrast */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; 
+      left: 0;
+      right: 0; 
+      bottom: 0;
+      background: rgba(12, 8, 6, 0.7);
+      z-index: -1;
+    }
+    /* Header */
+    h1 {
+      font-family: 'Merriweather', serif;
+      font-size: 2.5rem;
+      text-align: center;
+      margin: 1rem 0 1rem;
+      color: #F8E1C4;
+      text-shadow: 0 3px 6px rgba(0,0,0,0.6);
+    }
+    /* Instructions Card */
+    .instructions-container {
+      max-width: 600px;
+      margin: 0 auto 0.7rem;
+      padding: 1.5rem;
+      background: rgba(28, 20, 18, 0.85);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      font-size: 1rem;
+    }
+    /* Controls */
+    .controls-container {
+      text-align: center;
+    }
+    /* Buttons */
     button {
       margin: 0.5rem;
+      padding: 0.8rem 1.5rem;
+      font-weight: 600;
+      border: 1px solid #8D6E63;
+      border-radius: 4px;
+      background: linear-gradient(145deg, #5D4037, #4E342E);
+      color: #F5E1C4;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+      font-family: 'Open Sans', sans-serif;
     }
-    #sessionId {
-      font-weight: bold;
-    }
-    #transcript {
-      white-space: pre-wrap;
-      border: 1px solid #ccc;
-      padding: 1rem;
-      max-width: 600px;
-      min-height: 120px;
-    }
-    #recordIndicator {
-      margin-left: 1rem;
-      color: red;
-      font-weight: bold;
+    button:hover:enabled {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(145deg, #8D6E63, #6D4B3A);
     }
     button:disabled {
-      background-color: #ccc;
+      background: #3E2723;
+      border-color: #3E2723;
       cursor: not-allowed;
+    }
+    /* Session ID */
+    #sessionId {
+      font-weight: 600;
+      color: #F5E1C4;
+    }
+    /* Transcript Card */
+    #transcript {
+      white-space: pre-wrap;
+      padding: 1rem;
+      max-width: 900px;
+      min-height: 150px;
+      border-radius: 8px;
+      background: rgba(28, 20, 18, 0.85);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #EDE0D4;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      margin: 0.5rem auto;
+    }
+    /* Recording Indicator */
+    #recordIndicator {
+      margin-left: 1rem;
+      color: #E57373;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
   <h1>Realtime Agent App</h1>
-
-  <!-- Session controls -->
-  <div>
-    <button id="btnStartSession">Start Session</button>
-    <button id="btnStopSession">Stop Session</button>
+  <div class="instructions-container">
+    <p>
+      Welcome! Click "Start Session" to begin. Once the session starts, "Start Recording" will be enabled. 
+      Click it to capture your audio in real time. Click again to pause recording. 
+      When you're finished, click "Stop Session" to end.
+    </p>
   </div>
-  <p>Session ID: <span id="sessionId">N/A</span></p>
-
-  <!-- Toggle recording -->
-  <button id="btnToggleRecording" disabled>Start Recording</button>
-  <span id="recordIndicator">Not Recording</span>
-
-  <h3>Transcript:</h3>
-  <div id="transcript"></div>
+  <div class="controls-container">
+    <div>
+      <button id="btnStartSession">Start Session</button>
+      <button id="btnStopSession">Stop Session</button>
+    </div>
+    <p>Session ID: <span id="sessionId">N/A</span></p>
+    <button id="btnToggleRecording" disabled>Start Recording</button>
+    <span id="recordIndicator">Not Recording</span>
+    <h3>Transcript:</h3>
+    <div id="transcript"></div>
+  </div>
 
   <script>
-    // Session & WebSocket
+    // Session & WebSocket variables
     let sessionId = null;
     let ws = null;
 
-    // For mic recording
+    // Variables for mic recording
     let isRecording = false;
     let audioContext = null;
     let micStream = null;
     let processor = null;
 
-    // For TTS playback scheduling
+    // Variables for TTS playback scheduling
     let playbackContext = null;
-    let nextChunkTime = 0; // time in the AudioContext timeline when the next chunk should start
+    let nextChunkTime = 0;
 
     // DOM elements
     const btnStartSession = document.getElementById("btnStartSession");
@@ -73,7 +156,7 @@
     const transcriptDiv = document.getElementById("transcript");
 
     // ---------------------------------------------------------------
-    // 1. Start Session -> POST /start_session
+    // 1. Start Session -> POST /start_session and open WebSocket
     // ---------------------------------------------------------------
     btnStartSession.addEventListener("click", async () => {
       console.log("Requesting new session...");
@@ -82,9 +165,11 @@
       sessionId = data.session_id;
       sessionIdSpan.textContent = sessionId;
       console.log("Created session:", sessionId);
-
-      // Open WS to /ws/audio/{session_id}
+      
+      // Close any existing WebSocket connection
       if (ws) ws.close();
+      
+      // Open a new WebSocket connection
       ws = new WebSocket(`ws://${location.host}/ws/audio/${sessionId}`);
       ws.onopen = () => {
         console.log("WebSocket connected for session:", sessionId);
@@ -94,13 +179,10 @@
 
       ws.onmessage = (evt) => {
         const msg = JSON.parse(evt.data);
-        console.log("WS message:", msg);
-
+        console.log("WebSocket message:", msg);
         if (msg.type === "transcript_delta") {
-          // Show partial or final transcripts
           transcriptDiv.textContent = msg.text;
         } else if (msg.type === "audio_delta") {
-          // TTS chunk: schedule it
           queueTtsChunk(msg.audio);
         } else if (msg.type === "error") {
           console.error("Server error:", msg.message);
@@ -113,7 +195,7 @@
     });
 
     // ---------------------------------------------------------------
-    // 2. Stop Session -> POST /stop_session
+    // 2. Stop Session -> POST /stop_session and cleanup
     // ---------------------------------------------------------------
     btnStopSession.addEventListener("click", async () => {
       if (!sessionId) {
@@ -126,15 +208,20 @@
       sessionId = null;
       transcriptDiv.textContent = "";
       btnToggleRecording.disabled = true;
+      
+      // Stop recording if active
+      if (isRecording) {
+        stopRecording();
+      }
 
-      // Close WS
+      // Send disconnect message and close WebSocket
       if (ws) {
         ws.send(JSON.stringify({ type: "disconnect" }));
         ws.close();
         ws = null;
       }
 
-      // Optionally close TTS playback
+      // Optionally close TTS playback context
       if (playbackContext) {
         playbackContext.close();
         playbackContext = null;
@@ -142,7 +229,7 @@
     });
 
     // ---------------------------------------------------------------
-    // 3. Toggle Recording (mic) => sends audio_chunk
+    // 3. Toggle Recording (start/stop mic) -> sends audio_chunk
     // ---------------------------------------------------------------
     btnToggleRecording.addEventListener("click", async () => {
       if (!ws || !sessionId) {
@@ -150,50 +237,59 @@
         return;
       }
       if (!isRecording) {
-        // START
-        isRecording = true;
-        btnToggleRecording.textContent = "Stop Recording";
-        recordIndicator.textContent = "Recording...";
+        startRecording();
+      } else {
+        stopRecording();
+      }
+    });
 
+    // Function to start recording audio
+    async function startRecording() {
+      isRecording = true;
+      btnToggleRecording.textContent = "Stop Recording";
+      recordIndicator.textContent = "Recording...";
+      try {
         audioContext = new AudioContext({ sampleRate: 24000 });
         micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const input = audioContext.createMediaStreamSource(micStream);
-
         processor = audioContext.createScriptProcessor(2048, 1, 1);
         processor.onaudioprocess = (evt) => {
           const float32Data = evt.inputBuffer.getChannelData(0);
           const int16Data = float32ToInt16(float32Data);
           const b64 = arrayBufferToBase64(int16Data.buffer);
-          ws.send(JSON.stringify({ type: "audio_chunk", audio: b64 }));
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "audio_chunk", audio: b64 }));
+          }
         };
-
         input.connect(processor);
         processor.connect(audioContext.destination);
-      } else {
-        // STOP
-        isRecording = false;
-        btnToggleRecording.textContent = "Start Recording";
-        recordIndicator.textContent = "Not Recording";
-
-        // Cleanup
-        if (processor) {
-          processor.disconnect();
-          processor.onaudioprocess = null;
-          processor = null;
-        }
-        if (micStream) {
-          micStream.getTracks().forEach(t => t.stop());
-          micStream = null;
-        }
-        if (audioContext) {
-          await audioContext.close();
-          audioContext = null;
-        }
+      } catch (err) {
+        console.error("Error accessing microphone:", err);
       }
-    });
+    }
+
+    // Function to stop recording audio
+    async function stopRecording() {
+      isRecording = false;
+      btnToggleRecording.textContent = "Start Recording";
+      recordIndicator.textContent = "Not Recording";
+      if (processor) {
+        processor.disconnect();
+        processor.onaudioprocess = null;
+        processor = null;
+      }
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      if (audioContext) {
+        await audioContext.close();
+        audioContext = null;
+      }
+    }
 
     // ---------------------------------------------------------------
-    // TTS Playback Scheduling
+    // TTS Playback Scheduling: functions for scheduling audio chunks
     // ---------------------------------------------------------------
     function initTtsPlayback() {
       if (playbackContext) {
@@ -201,7 +297,7 @@
       }
       playbackContext = new AudioContext({ sampleRate: 24000 });
       nextChunkTime = 0;
-      console.log("Initialized new TTS playback AudioContext");
+      console.log("Initialized TTS playback AudioContext");
     }
 
     function queueTtsChunk(audioB64) {
@@ -232,6 +328,10 @@
       console.log(`Queued TTS chunk: length=${audioBuf.duration.toFixed(3)}s, start=${startTime.toFixed(3)}s`);
     }
 
+    // ---------------------------------------------------------------
+    // Utility functions
+    // ---------------------------------------------------------------
+    // Convert Float32Array to Int16Array for PCM encoding
     function float32ToInt16(float32Array) {
       const int16Array = new Int16Array(float32Array.length);
       for (let i = 0; i < float32Array.length; i++) {
@@ -242,6 +342,7 @@
       return int16Array;
     }
 
+    // Convert an ArrayBuffer to a Base64 encoded string
     function arrayBufferToBase64(buffer) {
       const binary = String.fromCharCode(...new Uint8Array(buffer));
       return btoa(binary);
