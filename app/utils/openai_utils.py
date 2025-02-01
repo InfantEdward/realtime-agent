@@ -1,7 +1,8 @@
 import json
-from logging import Logger
 import asyncio
+from logging import Logger
 from typing import Callable, List, Tuple
+
 from openai.types.beta.realtime.realtime_server_event import (
     RealtimeServerEvent,
 )
@@ -16,13 +17,6 @@ def extract_event_details(
 ) -> Tuple[str, str, str]:
     """
     Extracts details from a RealtimeServerEvent.
-
-    Args:
-        event (RealtimeServerEvent): The event to extract details from.
-        logger (Logger): Logger for logging information and errors.
-
-    Returns:
-        Tuple[str, str, str]: The call ID, tool name, and arguments extracted from the event.
     """
     try:
         logger.info("Extracting tool call details from event")
@@ -44,16 +38,6 @@ def create_tool_input_output_items(
 ) -> Tuple[ConversationItemParam, ConversationItemParam]:
     """
     Creates input and output items for a tool call.
-
-    Args:
-        call_id (str): The call ID.
-        tool_name (str): The name of the tool.
-        arguments (str): The arguments passed to the tool.
-        tool_output (str): The output from the tool.
-        logger (Logger): Logger for logging information and errors.
-
-    Returns:
-        Tuple[ConversationItemParam, ConversationItemParam]: The input and output items.
     """
     try:
         logger.info(f"Creating items for tool: {tool_name}")
@@ -80,19 +64,12 @@ async def get_tool_call_results(
 ) -> Tuple[ConversationItemParam, ConversationItemParam]:
     """
     Gets the results of a tool call.
-
-    Args:
-        event (RealtimeServerEvent): The event containing the tool call details.
-        tool_list (List[Callable]): The list of available tools.
-        logger (Logger): Logger for logging information and errors.
-
-    Returns:
-        Tuple[ConversationItemParam, ConversationItemParam]: The input and output items.
     """
     call_id, tool_name, arguments = extract_event_details(event, logger)
     if not call_id or not tool_name or not arguments:
         return None, None
     try:
+        result_str = "No matching tool found"
         for tool in tool_list:
             if tool.__name__ == tool_name:
                 logger.info(f"Calling tool: {tool.__name__}")
@@ -101,12 +78,13 @@ async def get_tool_call_results(
                 else:
                     result = tool(**json.loads(arguments))
                 result_str = str(result)
+                break
     except Exception as e:
         logger.error(
-            f"An error occurred while calling the tool: {tool.__name__}. "
-            f"Error: {e}"
+            f"An error occurred while calling the tool: {tool_name}. Error: {e}"
         )
         result_str = f"Error: {e}"
+
     input_item, output_item = create_tool_input_output_items(
         call_id, tool_name, arguments, result_str, logger
     )
@@ -121,12 +99,6 @@ async def send_tool_call_results(
 ) -> None:
     """
     Sends the results of a tool call to the server.
-
-    Args:
-        input_item (ConversationItemParam): The input item.
-        output_item (ConversationItemParam): The output item.
-        connection (AsyncRealtimeConnection): The connection to the server.
-        logger (Logger): Logger for logging information and errors.
     """
     try:
         logger.info("Sending tool call results to server")

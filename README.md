@@ -1,6 +1,6 @@
 # realtime-agent
 
-Welcome to the `realtime-agent` project! This application leverages OpenAI's Realtime API to provide seamless real-time interactions. Inspired by the "push_to_talk" example from the openai-python repository, our app offers enhanced functionality and customization. Check out the original example here: https://github.com/openai/openai-python/blob/main/examples/realtime/push_to_talk_app.py.
+Welcome to the `realtime-agent` project! This application leverages OpenAI's Realtime API to provide seamless real-time interactions. It allows users to start a session, record audio, and receive real-time transcriptions and text-to-speech (TTS) playback directly in their browser.
 
 ## Getting Started
 
@@ -42,6 +42,9 @@ Follow these steps to get the app up and running:
     LOG_DIR=./logs
     LOG_REALTIME_EVENTS=False
     EXC_INFO=False
+
+    API_HOST="0.0.0.0"
+    API_PORT=8000
     ```
 
     Note: Only `OPENAI_API_KEY`, `REALTIME_MODEL`, and `TURN_DETECTION_CONFIG` are mandatory. The rest are optional and can be customized as needed. Additionally, the turn detection currently only supports `{"type": "server_vad"}`.
@@ -51,9 +54,38 @@ Follow these steps to get the app up and running:
     python main.py
     ```
 
+## Running with Docker
+
+You can also run the app using Docker. Follow these steps:
+
+1. **Build the Docker image:**
+    ```sh
+    docker build -t realtime-agent .
+    ```
+
+2. **Run the Docker container:**
+    ```sh
+    docker run -p 8000:8000 --env-file .env realtime-agent
+    ```
+
+3. **Run the Docker container with a volume for logs:**
+    ```sh
+    docker run -p 8000:8000 --env-file .env -v $(pwd)/logs:/app/logs realtime-agent
+    ```
+
+## Using the Browser Frontend
+
+Once the app is running, open your browser and navigate to `http://localhost:8000`. You will see the Realtime Agent App interface with the following controls:
+
+1. **Start Session:** Click the "Start Session" button to initiate a new session. The session ID will be displayed.
+2. **Stop Session:** Click the "Stop Session" button to end the current session.
+3. **Start/Stop Recording:** Click the "Start Recording" button to begin recording audio. The button will change to "Stop Recording" while recording is active. Click it again to stop recording.
+
+The transcriptions will be displayed in real-time in the "Transcript" section, and TTS playback will be scheduled automatically.
+
 ## Customizing the Tools
 
-You can easily customize the tools available to the agent by modifying the `TOOL_LIST` in the `main.py` file. If you need to create custom tools, ensure they have a docstring and follow the format of the `obtener_clima` function in `user_tools.py`. The first part of the docstring should be the description of the tool, followed by a "------" separating that description and the description of every input argument.
+You can easily customize the tools available to the agent by modifying the `TOOL_LIST` in the `app/config.py` file. If you need to create custom tools, ensure they have a docstring and follow the format of the `obtener_clima` function in `app/user_tools.py`. The first part of the docstring should be the description of the tool, followed by a "------" separating that description and the description of every input argument.
 
 ### Example:
 
@@ -70,4 +102,4 @@ def example_tool(argument: str) -> str:
 
 ## Customizing the Agent's Instructions
 
-The instructions given to the agent can be customized by passing them when initializing the agent with the `system_prompt` variable. In the current setup, this is defined as `INSTRUCTIONS` in the `main.py` file.
+The instructions given to the agent can be customized by modifying the `INSTRUCTIONS` variable in the `app/config.py` file.

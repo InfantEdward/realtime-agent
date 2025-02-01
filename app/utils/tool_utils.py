@@ -3,16 +3,18 @@ from inspect import signature, Parameter
 from typing import Callable, Dict, Any, List
 
 
+# Example user tool
+def obtener_clima(ciudad: str):
+    """
+    Obtiene el clima de la ciudad dada.
+    ------
+    ciudad: Nombre de la ciudad para la que se quiere obtener el clima.
+    """
+    # Example mock
+    return f"El clima en {ciudad} es soleado con 25 grados."
+
+
 def extract_function_description(func: Callable) -> str:
-    """
-    Extracts the main function description from the docstring of a function.
-
-    Args:
-        func (Callable): The function whose docstring is to be extracted.
-
-    Returns:
-        str: The main description of the function.
-    """
     docstring = func.__doc__
     if not docstring:
         return ""
@@ -22,40 +24,19 @@ def extract_function_description(func: Callable) -> str:
 
 
 def parse_param_descriptions(docstring):
-    """
-    Extracts parameter descriptions from the docstring.
-
-    Args:
-        docstring (str): The function's docstring.
-
-    Returns:
-        dict: A dictionary mapping parameter names to descriptions.
-    """
     if not docstring or "------" not in docstring:
         return {}
     _, param_section = docstring.split("------", 1)
     descriptions = {}
-
     for line in param_section.strip().splitlines():
         line = line.strip()
         if line and ":" in line:
             param, desc = line.split(":", 1)
             descriptions[param.strip()] = desc.strip()
-
     return descriptions
 
 
 def create_pydantic_model_with_descriptions(func: Callable) -> BaseModel:
-    """
-    Creates a Pydantic BaseModel subclass from the parameters of a given function,
-    including parameter descriptions.
-
-    Args:
-        func (Callable): The function to create a model for.
-
-    Returns:
-        Type[BaseModel]: A dynamically created BaseModel subclass.
-    """
     sig = signature(func)
     docstring = func.__doc__
     param_descriptions = parse_param_descriptions(docstring)
@@ -68,7 +49,6 @@ def create_pydantic_model_with_descriptions(func: Callable) -> BaseModel:
             field_type = str
 
         field_kwargs = {"description": param_descriptions.get(param_name, "")}
-
         if param.default != Parameter.empty:
             fields[param_name] = (
                 field_type,
@@ -83,46 +63,27 @@ def create_pydantic_model_with_descriptions(func: Callable) -> BaseModel:
 def get_tool_schema_from_tool_and_model(
     tool: Callable, model: BaseModel
 ) -> Dict[str, Any]:
-    """
-    Generates a schema for a given tool function and its corresponding Pydantic model.
-
-    Args:
-        tool (Callable): The tool function.
-        model (BaseModel): The Pydantic model representing the tool's parameters.
-
-    Returns:
-        Dict[str, Any]: The schema representing the tool and its parameters.
-    """
     param_schema = model.model_json_schema()
-    properties = param_schema.get("properties")
-    required = param_schema.get("required")
+    properties = param_schema.get("properties", {})
+    required = param_schema.get("required", [])
 
-    for property in properties.values():
-        property.pop("title")
+    # Remove "title" from each property
+    for prop in properties.values():
+        prop.pop("title", None)
 
-    schema = {
+    return {
         "type": "function",
         "name": tool.__name__,
-        "description": tool.__doc__.strip(),
+        "description": extract_function_description(tool),
         "parameters": {
             "type": "object",
             "properties": properties,
             "required": required,
         },
     }
-    return schema
 
 
 def get_tool_schema_from_tool(tool: Callable) -> Dict[str, Any]:
-    """
-    Generates a schema for a given tool function.
-
-    Args:
-        tool (Callable): The tool function.
-
-    Returns:
-        Dict[str, Any]: The schema representing the tool and its parameters.
-    """
     model = create_pydantic_model_with_descriptions(tool)
     return get_tool_schema_from_tool_and_model(tool, model)
 
