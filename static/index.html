@@ -146,6 +146,10 @@
     // Variables for TTS playback scheduling
     let playbackContext = null;
     let nextChunkTime = 0;
+    // Track current item_id for audio chunks
+    let currentItemId = null;
+    // Track the current AudioBufferSourceNode
+    let currentSource = null;
 
     // DOM elements
     const btnStartSession = document.getElementById("btnStartSession");
@@ -183,6 +187,20 @@
         if (msg.type === "transcript_delta") {
           transcriptDiv.textContent = msg.text;
         } else if (msg.type === "audio_delta") {
+          if (currentItemId !== msg.item_id) {
+            console.log(`New item_id received: ${msg.item_id}. Restarting playback.`);
+            if (currentSource) {
+              currentSource.stop();
+              currentSource.disconnect();
+              currentSource = null;
+            }
+            if (playbackContext) {
+              playbackContext.close();
+            }
+            playbackContext = null;
+            initTtsPlayback();
+            currentItemId = msg.item_id;
+          }
           queueTtsChunk(msg.audio);
         } else if (msg.type === "error") {
           console.error("Server error:", msg.message);
@@ -226,6 +244,8 @@
         playbackContext.close();
         playbackContext = null;
       }
+      // Reset current item_id
+      currentItemId = null;
     });
 
     // ---------------------------------------------------------------
@@ -326,6 +346,9 @@
       source.start(startTime);
       nextChunkTime = startTime + audioBuf.duration;
       console.log(`Queued TTS chunk: length=${audioBuf.duration.toFixed(3)}s, start=${startTime.toFixed(3)}s`);
+
+      // Track the current source
+      currentSource = source;
     }
 
     // ---------------------------------------------------------------

@@ -151,7 +151,11 @@ class WebsocketService:
                     # payload.delta is base64 audio
                     audio_b64 = payload.delta
                     await ws.send_json(
-                        {"type": "audio_delta", "audio": audio_b64}
+                        {
+                            "type": "audio_delta",
+                            "audio": audio_b64,
+                            "item_id": payload.item_id,
+                        }
                     )
 
         logger.info(f"consume_agent_events -> ended for session {session_id}")
