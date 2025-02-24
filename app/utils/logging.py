@@ -1,4 +1,4 @@
-from logging import Logger, FileHandler, StreamHandler, Formatter, INFO
+from logging import Logger, FileHandler, StreamHandler, Formatter
 from pathlib import Path
 from datetime import datetime
 
@@ -10,8 +10,7 @@ class CustomLogger(Logger):
         super().__init__(name)
 
         # Set log level from config
-        level_name = config.LOG_LEVEL.upper()
-        level = getattr(self, level_name, INFO)
+        level = config.LOG_LEVEL.upper()
         self.setLevel(level)
 
         # Create formatter

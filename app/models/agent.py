@@ -7,6 +7,8 @@ from app.utils.logging import CustomLogger
 from app.utils.openai_utils import (
     get_tool_call_results,
     send_tool_call_results,
+    create_user_message_item,
+    send_user_message,
 )
 from app.utils.tool_utils import (
     validate_schema_list,
@@ -20,19 +22,20 @@ class OpenAIRealtimeAgent:
         self,
         model: str,
         client: Optional[AsyncOpenAI] = None,
+        temperature: Optional[float] = None,
+        voice: Optional[str] = None,
         turn_detection: Optional[Dict[str, Any]] = None,
         system_prompt: Optional[str] = None,
-        input_audio_transcription: Optional[Dict[str, Any]] = None,
-        input_audio_transcription_prefix: str = "",
-        output_audio_transcription_prefix: str = "",
-        input_output_transcripts_sep: str = "\n\n\n",
+        input_audio_transcript_config: Optional[Dict[str, Any]] = None,
         tools: Optional[List[Callable]] = None,
         tool_schema_list: Optional[List[Dict[str, Any]]] = None,
         tool_choice: str = "auto",
+        initial_user_message: Optional[str] = None,
         logger: Optional[Logger] = None,
-        log_events: bool = False,
     ) -> None:
         self.model = model
+        self.temperature = temperature
+        self.voice = voice
         self.client = client or AsyncOpenAI()
         self.turn_detection = turn_detection
         self.system_prompt = system_prompt
@@ -41,20 +44,12 @@ class OpenAIRealtimeAgent:
         self.connected = asyncio.Event()
 
         self.logger = logger or CustomLogger(__name__)
-        self.log_events = log_events
 
-        self.input_audio_transcription = input_audio_transcription
-        self.input_audio_transcription_prefix = (
-            input_audio_transcription_prefix
-        )
-        self.output_audio_transcription_prefix = (
-            output_audio_transcription_prefix
-        )
-        self.input_output_transcripts_sep = input_output_transcripts_sep
-
+        self.input_audio_transcript_config = input_audio_transcript_config
         self.tools = self.build_tools(tools, tool_schema_list)
         self._tools_callables = tools
         self.tool_choice = tool_choice
+        self.initial_user_message = initial_user_message
 
     async def connect(self):
         async with self.client.beta.realtime.connect(model=self.model) as conn:
@@ -63,13 +58,17 @@ class OpenAIRealtimeAgent:
 
             # If you want to set session params:
             update_params = {}
+            if self.temperature:
+                update_params["temperature"] = self.temperature
+            if self.voice:
+                update_params["voice"] = self.voice
             if self.turn_detection:
                 update_params["turn_detection"] = self.turn_detection
             if self.system_prompt:
                 update_params["instructions"] = self.system_prompt
-            if self.input_audio_transcription:
+            if self.input_audio_transcript_config:
                 update_params["input_audio_transcription"] = (
-                    self.input_audio_transcription
+                    self.input_audio_transcript_config
                 )
             if self.tools:
                 update_params["tools"] = self.tools
@@ -78,14 +77,16 @@ class OpenAIRealtimeAgent:
             if update_params:
                 await conn.session.update(session=update_params)
 
+            if self.initial_user_message:
+                await self.send_message(self.initial_user_message, "user")
+
             response_audio_items: Dict[str, str] = {}
             response_text_items: Dict[str, str] = {}
             input_transcript = None
 
             async for event in conn:
                 self.logger.info("Event type: " + event.type)
-                if self.log_events:
-                    self.logger.info(f"Event: {str(event)}")
+                self.logger.debug(f"Event: {str(event)}")
                 evt_type = event.type
 
                 if evt_type == "session.created":
@@ -102,29 +103,19 @@ class OpenAIRealtimeAgent:
                     == "conversation.item.input_audio_transcription.completed"
                 ):
                     input_transcript = getattr(event, "transcript", "")
+                    yield ("input_audio_transcript", input_transcript)
 
                 if evt_type == "response.audio_transcript.delta":
                     old_text = response_audio_items.get(event.item_id, "")
                     new_text = old_text + event.delta
                     response_audio_items[event.item_id] = new_text
-
-                    if input_transcript:
-                        combined = (
-                            self.input_audio_transcription_prefix
-                            + input_transcript
-                            + self.input_output_transcripts_sep
-                            + self.output_audio_transcription_prefix
-                            + new_text
-                        )
-                        yield ("transcript_delta", combined)
-                    else:
-                        yield ("transcript_delta", new_text)
+                    yield ("response_audio_transcript_delta", new_text)
 
                 if evt_type == "response.text.delta":
                     old_text = response_text_items.get(event.item_id, "")
                     new_text = old_text + event.delta
                     response_text_items[event.item_id] = new_text
-                    yield ("transcript_delta", new_text)
+                    yield ("response_text_delta", new_text)
 
                 if evt_type == "response.function_call_arguments.done":
                     input_item, output_item = await get_tool_call_results(
@@ -136,11 +127,38 @@ class OpenAIRealtimeAgent:
                         input_item, output_item, conn, self.logger
                     )
 
-    async def get_connection(self) -> AsyncRealtimeConnection:
+    async def send_audio(self, audio_b64: str) -> None:
+        """
+        Processes an audio chunk that has been encoded to a base64 UTF-8 string.
+
+        Parameters:
+            audio_b64 (str): Base64-encoded audio data as a UTF-8 string.
+        """
+        await self.connection.input_audio_buffer.append(audio=audio_b64)
+
+    async def check_connection(self) -> bool:
         await self.connected.wait()
         if not self.connection:
             raise RuntimeError("Connection not established.")
-        return self.connection
+        return True
+
+    async def send_message(self, text: str, message_type: str) -> None:
+        """
+        Sends a message to the server.
+
+        Parameters:
+            text (str): The text of the message.
+            type (str): The type of the message.
+        """
+        if message_type == "user":
+            user_item = create_user_message_item(
+                input_text=text, logger=self.logger
+            )
+            await send_user_message(
+                conversation_item=user_item,
+                connection=self.connection,
+                logger=self.logger,
+            )
 
     @staticmethod
     def build_tools(

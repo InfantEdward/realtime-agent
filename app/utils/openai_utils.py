@@ -9,6 +9,9 @@ from openai.types.beta.realtime.realtime_server_event import (
 from openai.types.beta.realtime.conversation_item_param import (
     ConversationItemParam,
 )
+from openai.types.beta.realtime.conversation_item_content_param import (
+    ConversationItemContentParam,
+)
 from openai.resources.beta.realtime.realtime import AsyncRealtimeConnection
 
 
@@ -27,6 +30,45 @@ def extract_event_details(
     except Exception as e:
         logger.error(f"Error extracting tool call details from event: {e}")
         return None, None, None
+
+
+def create_user_message_item(
+    input_text: str, logger: Logger
+) -> ConversationItemParam:
+    """
+    Creates a user message item.
+    """
+    try:
+        content = ConversationItemContentParam(
+            text=input_text, type="input_text"
+        )
+        logger.debug(f"Creating user message item: {input_text}")
+        return ConversationItemParam(
+            type="message",
+            role="user",
+            content=[content],
+            status="completed",
+        )
+    except Exception as e:
+        logger.error(f"Error creating user message item: {e}")
+        return None
+
+
+async def send_user_message(
+    conversation_item: ConversationItemParam,
+    connection: AsyncRealtimeConnection,
+    logger: Logger,
+) -> None:
+    """
+    Sends a user message to the server.
+    """
+    try:
+        logger.info("Sending user message to server")
+        await connection.conversation.item.create(item=conversation_item)
+        await connection.response.create()
+        logger.info("User message sent to server")
+    except Exception as e:
+        logger.error(f"Error sending user message to server: {e}")
 
 
 def create_tool_input_output_items(

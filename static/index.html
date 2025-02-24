@@ -1,375 +1,359 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Realtime Agent App</title>
-  <!-- Use classic, elegant fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link 
-    href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap" 
-    rel="stylesheet"
-  >
-  <style>
-    /* Global Reset */
-    * {
-      box-sizing: border-box;
-    }
-    /* Body with new background */
-    body {
-      margin: 0;
-      padding: 10px;
-      background: url("/static/app_background.webp") no-repeat center center fixed;
-      background-size: cover;
-      color: #EDE0D4;
-      font-family: 'Open Sans', sans-serif;
-      line-height: 1.6;
-    }
-    /* Dark Overlay for Better Contrast */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0; 
-      left: 0;
-      right: 0; 
-      bottom: 0;
-      background: rgba(12, 8, 6, 0.7);
-      z-index: -1;
-    }
-    /* Header */
-    h1 {
-      font-family: 'Merriweather', serif;
-      font-size: 2.5rem;
-      text-align: center;
-      margin: 1rem 0 1rem;
-      color: #F8E1C4;
-      text-shadow: 0 3px 6px rgba(0,0,0,0.6);
-    }
-    /* Instructions Card */
-    .instructions-container {
-      max-width: 600px;
-      margin: 0 auto 0.7rem;
-      padding: 1.5rem;
-      background: rgba(28, 20, 18, 0.85);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      text-align: center;
-      font-size: 1rem;
-    }
-    /* Controls */
-    .controls-container {
-      text-align: center;
-    }
-    /* Buttons */
-    button {
-      margin: 0.5rem;
-      padding: 0.8rem 1.5rem;
-      font-weight: 600;
-      border: 1px solid #8D6E63;
-      border-radius: 4px;
-      background: linear-gradient(145deg, #5D4037, #4E342E);
-      color: #F5E1C4;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
-      font-family: 'Open Sans', sans-serif;
-    }
-    button:hover:enabled {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      background: linear-gradient(145deg, #8D6E63, #6D4B3A);
-    }
-    button:disabled {
-      background: #3E2723;
-      border-color: #3E2723;
-      cursor: not-allowed;
-    }
-    /* Session ID */
-    #sessionId {
-      font-weight: 600;
-      color: #F5E1C4;
-    }
-    /* Transcript Card */
-    #transcript {
-      white-space: pre-wrap;
-      padding: 1rem;
-      max-width: 900px;
-      min-height: 150px;
-      border-radius: 8px;
-      background: rgba(28, 20, 18, 0.85);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #EDE0D4;
-      font-size: 1rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      margin: 0.5rem auto;
-    }
-    /* Recording Indicator */
-    #recordIndicator {
-      margin-left: 1rem;
-      color: #E57373;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <h1>Realtime Agent App</h1>
-  <div class="instructions-container">
-    <p>
-      Welcome! Click "Start Session" to begin. Once the session starts, "Start Recording" will be enabled. 
-      Click it to capture your audio in real time. Click again to pause recording. 
-      When you're finished, click "Stop Session" to end.
-    </p>
-  </div>
-  <div class="controls-container">
-    <div>
-      <button id="btnStartSession">Start Session</button>
-      <button id="btnStopSession">Stop Session</button>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Realtime Agent App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 10px;
+        background: url("/static/app_background.webp") no-repeat center center fixed;
+        background-size: cover;
+        color: #ede0d4;
+        font-family: "Open Sans", sans-serif;
+        line-height: 1.6;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(12, 8, 6, 0.7);
+        z-index: -1;
+      }
+      h1 {
+        font-family: "Merriweather", serif;
+        font-size: 2.5rem;
+        text-align: center;
+        margin: 1rem 0 1rem;
+        color: #f8e1c4;
+        text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
+      }
+      .instructions-container {
+        max-width: 650px;
+        margin: 0 auto 0.7rem;
+        padding: 1rem;
+        background: rgba(28, 20, 18, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        text-align: center;
+        font-size: 0.9rem;
+      }
+      .controls-container {
+        text-align: center;
+      }
+      .user-input-container {
+        max-width: 900px;
+        margin: 0.5rem auto;
+        padding: 1rem;
+        background: rgba(28, 20, 18, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        height: 75px;
+        display: flex;
+        align-items: center;
+      }
+      .user-input-container input {
+        width: 95%;
+        padding: 0.5rem;
+        border: 1px solid #3e2723;
+        border-radius: 4px;
+        margin-right: 0.5rem;
+        font-size: 1rem;
+        background: rgba(28, 20, 18, 0.85);
+        color: #f5e1c4;
+      }
+      button {
+        margin: 0.5rem;
+        padding: 0.8rem 1.5rem;
+        font-weight: 600;
+        border: 1px solid #8d6e63;
+        border-radius: 4px;
+        background: linear-gradient(145deg, #5d4037, #4e342e);
+        color: #f5e1c4;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+        font-family: "Open Sans", sans-serif;
+      }
+      button:hover:enabled {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        background: linear-gradient(145deg, #8d6e63, #6d4b3a);
+      }
+      button:disabled {
+        background: #3e2723;
+        border-color: #3e2723;
+        cursor: not-allowed;
+      }
+      #sessionId {
+        font-weight: 600;
+        color: #f5e1c4;
+      }
+      .transcript-box {
+        white-space: pre-wrap;
+        padding: 1rem;
+        max-width: 900px;
+        min-height: 75px;
+        border-radius: 8px;
+        background: rgba(28, 20, 18, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #ede0d4;
+        font-size: 1rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        margin: 0.5rem auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Realtime Agent App</h1>
+    <div class="instructions-container">
+      <p>
+        Welcome! Click "Start Session" to begin. Once the session starts,
+        "Start Recording" will be enabled. Click it to capture your audio in real time. Click again to pause recording. When you're finished, click "Stop Session" to end.
+        Additionally, you can type text in the input field below and click "Send" (or press Enter) to submit text input.
+      </p>
     </div>
-    <p>Session ID: <span id="sessionId">N/A</span></p>
-    <button id="btnToggleRecording" disabled>Start Recording</button>
-    <span id="recordIndicator">Not Recording</span>
-    <h3>Transcript:</h3>
-    <div id="transcript"></div>
-  </div>
+    <div class="controls-container">
+      <div>
+        <button id="btnStartSession">Start Session</button>
+        <button id="btnStopSession">Stop Session</button>
+      </div>
+      <p>Session ID: <span id="sessionId">N/A</span></p>
+      <button id="btnToggleRecording" disabled>Start Recording</button>
+      <span id="recordIndicator">Not Recording</span>
+    </div>
+    <div class="user-input-container">
+      <input type="text" id="userText" placeholder="Type text here..." />
+      <button id="btnSendText">Send</button>
+    </div>
+    <!-- First transcript box for input_audio_transcript events -->
+    <div id="inputTranscript" class="transcript-box"></div>
+    <!-- Second transcript box for response_audio_transcript_delta or response_text_delta events -->
+    <div id="responseTranscript" class="transcript-box"></div>
 
-  <script>
-    // Session & WebSocket variables
-    let sessionId = null;
-    let ws = null;
+    <script>
+      let sessionId = null;
+      let ws = null;
+      let isRecording = false;
+      let audioContext = null;
+      let micStream = null;
+      let processor = null;
+      let playbackContext = null;
+      let nextChunkTime = 0;
+      let currentItemId = null;
+      let currentSource = null;
 
-    // Variables for mic recording
-    let isRecording = false;
-    let audioContext = null;
-    let micStream = null;
-    let processor = null;
+      const btnStartSession = document.getElementById("btnStartSession");
+      const btnStopSession = document.getElementById("btnStopSession");
+      const btnToggleRecording = document.getElementById("btnToggleRecording");
+      const recordIndicator = document.getElementById("recordIndicator");
+      const sessionIdSpan = document.getElementById("sessionId");
+      const userText = document.getElementById("userText");
+      const btnSendText = document.getElementById("btnSendText");
 
-    // Variables for TTS playback scheduling
-    let playbackContext = null;
-    let nextChunkTime = 0;
-    // Track current item_id for audio chunks
-    let currentItemId = null;
-    // Track the current AudioBufferSourceNode
-    let currentSource = null;
+      btnStartSession.addEventListener("click", async () => {
+        const resp = await fetch("/start_session", { method: "POST" });
+        const data = await resp.json();
+        sessionId = data.session_id;
+        sessionIdSpan.textContent = sessionId;
 
-    // DOM elements
-    const btnStartSession = document.getElementById("btnStartSession");
-    const btnStopSession = document.getElementById("btnStopSession");
-    const btnToggleRecording = document.getElementById("btnToggleRecording");
-    const recordIndicator = document.getElementById("recordIndicator");
-    const sessionIdSpan = document.getElementById("sessionId");
-    const transcriptDiv = document.getElementById("transcript");
-
-    // ---------------------------------------------------------------
-    // 1. Start Session -> POST /start_session and open WebSocket
-    // ---------------------------------------------------------------
-    btnStartSession.addEventListener("click", async () => {
-      console.log("Requesting new session...");
-      const resp = await fetch("/start_session", { method: "POST" });
-      const data = await resp.json();
-      sessionId = data.session_id;
-      sessionIdSpan.textContent = sessionId;
-      console.log("Created session:", sessionId);
-      
-      // Close any existing WebSocket connection
-      if (ws) ws.close();
-      
-      // Open a new WebSocket connection
-      ws = new WebSocket(`ws://${location.host}/ws/audio/${sessionId}`);
-      ws.onopen = () => {
-        console.log("WebSocket connected for session:", sessionId);
-        btnToggleRecording.disabled = false;
-        initTtsPlayback();
-      };
-
-      ws.onmessage = (evt) => {
-        const msg = JSON.parse(evt.data);
-        console.log("WebSocket message:", msg);
-        if (msg.type === "transcript_delta") {
-          transcriptDiv.textContent = msg.text;
-        } else if (msg.type === "audio_delta") {
-          if (currentItemId !== msg.item_id) {
-            console.log(`New item_id received: ${msg.item_id}. Restarting playback.`);
-            if (currentSource) {
-              currentSource.stop();
-              currentSource.disconnect();
-              currentSource = null;
+        if (ws) ws.close();
+        ws = new WebSocket(`ws://${location.host}/ws/audio/${sessionId}`);
+        ws.onopen = () => {
+          btnToggleRecording.disabled = false;
+          initTtsPlayback();
+        };
+        ws.onmessage = (evt) => {
+          const msg = JSON.parse(evt.data);
+          if (msg.type === "input_audio_transcript") {
+            document.getElementById("inputTranscript").textContent = msg.text;
+          } else if (
+            msg.type === "response_audio_transcript_delta" ||
+            msg.type === "response_text_delta"
+          ) {
+            document.getElementById("responseTranscript").textContent =
+              msg.text;
+          } else if (msg.type === "audio_delta") {
+            if (currentItemId !== msg.item_id) {
+              if (currentSource) {
+                currentSource.stop();
+                currentSource.disconnect();
+                currentSource = null;
+              }
+              if (playbackContext) {
+                playbackContext.close();
+              }
+              playbackContext = null;
+              initTtsPlayback();
+              currentItemId = msg.item_id;
             }
-            if (playbackContext) {
-              playbackContext.close();
-            }
-            playbackContext = null;
-            initTtsPlayback();
-            currentItemId = msg.item_id;
-          }
-          queueTtsChunk(msg.audio);
-        } else if (msg.type === "error") {
-          console.error("Server error:", msg.message);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log("WebSocket closed");
-      };
-    });
-
-    // ---------------------------------------------------------------
-    // 2. Stop Session -> POST /stop_session and cleanup
-    // ---------------------------------------------------------------
-    btnStopSession.addEventListener("click", async () => {
-      if (!sessionId) {
-        console.warn("No active session to stop.");
-        return;
-      }
-      console.log("Stopping session:", sessionId);
-      await fetch(`/stop_session?session_id=${sessionId}`, { method: "POST" });
-      sessionIdSpan.textContent = "N/A";
-      sessionId = null;
-      transcriptDiv.textContent = "";
-      btnToggleRecording.disabled = true;
-      
-      // Stop recording if active
-      if (isRecording) {
-        stopRecording();
-      }
-
-      // Send disconnect message and close WebSocket
-      if (ws) {
-        ws.send(JSON.stringify({ type: "disconnect" }));
-        ws.close();
-        ws = null;
-      }
-
-      // Optionally close TTS playback context
-      if (playbackContext) {
-        playbackContext.close();
-        playbackContext = null;
-      }
-      // Reset current item_id
-      currentItemId = null;
-    });
-
-    // ---------------------------------------------------------------
-    // 3. Toggle Recording (start/stop mic) -> sends audio_chunk
-    // ---------------------------------------------------------------
-    btnToggleRecording.addEventListener("click", async () => {
-      if (!ws || !sessionId) {
-        console.warn("No active session to record.");
-        return;
-      }
-      if (!isRecording) {
-        startRecording();
-      } else {
-        stopRecording();
-      }
-    });
-
-    // Function to start recording audio
-    async function startRecording() {
-      isRecording = true;
-      btnToggleRecording.textContent = "Stop Recording";
-      recordIndicator.textContent = "Recording...";
-      try {
-        audioContext = new AudioContext({ sampleRate: 24000 });
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const input = audioContext.createMediaStreamSource(micStream);
-        processor = audioContext.createScriptProcessor(2048, 1, 1);
-        processor.onaudioprocess = (evt) => {
-          const float32Data = evt.inputBuffer.getChannelData(0);
-          const int16Data = float32ToInt16(float32Data);
-          const b64 = arrayBufferToBase64(int16Data.buffer);
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "audio_chunk", audio: b64 }));
+            queueTtsChunk(msg.audio);
+          } else if (msg.type === "error") {
+            console.error("Server error:", msg.message);
           }
         };
-        input.connect(processor);
-        processor.connect(audioContext.destination);
-      } catch (err) {
-        console.error("Error accessing microphone:", err);
-      }
-    }
+        ws.onclose = () => {
+          console.log("WebSocket closed");
+        };
+      });
 
-    // Function to stop recording audio
-    async function stopRecording() {
-      isRecording = false;
-      btnToggleRecording.textContent = "Start Recording";
-      recordIndicator.textContent = "Not Recording";
-      if (processor) {
-        processor.disconnect();
-        processor.onaudioprocess = null;
-        processor = null;
-      }
-      if (micStream) {
-        micStream.getTracks().forEach(t => t.stop());
-        micStream = null;
-      }
-      if (audioContext) {
-        await audioContext.close();
-        audioContext = null;
-      }
-    }
+      btnStopSession.addEventListener("click", async () => {
+        if (!sessionId) return;
+        await fetch(`/stop_session?session_id=${sessionId}`, {
+          method: "POST",
+        });
+        sessionIdSpan.textContent = "N/A";
+        sessionId = null;
+        // Clear both transcript boxes when session stops
+        document.getElementById("inputTranscript").textContent = "";
+        document.getElementById("responseTranscript").textContent = "";
+        btnToggleRecording.disabled = true;
+        if (isRecording) {
+          stopRecording();
+        }
+        if (ws) {
+          ws.send(JSON.stringify({ type: "disconnect" }));
+          ws.close();
+          ws = null;
+        }
+        if (playbackContext) {
+          playbackContext.close();
+          playbackContext = null;
+        }
+        currentItemId = null;
+      });
 
-    // ---------------------------------------------------------------
-    // TTS Playback Scheduling: functions for scheduling audio chunks
-    // ---------------------------------------------------------------
-    function initTtsPlayback() {
-      if (playbackContext) {
-        playbackContext.close();
+      btnToggleRecording.addEventListener("click", async () => {
+        if (!ws || !sessionId) return;
+        if (!isRecording) {
+          startRecording();
+        } else {
+          stopRecording();
+        }
+      });
+
+      btnSendText.addEventListener("click", () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          const currentText = userText.value;
+          ws.send(JSON.stringify({ type: "user_input", text: currentText }));
+          document.getElementById("inputTranscript").textContent = currentText; // Display the typed text
+          userText.value = "";
+        }
+      });
+
+      userText.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          btnSendText.click();
+        }
+      });
+
+      async function startRecording() {
+        isRecording = true;
+        btnToggleRecording.textContent = "Stop Recording";
+        recordIndicator.textContent = "Recording...";
+        try {
+          audioContext = new AudioContext({ sampleRate: 24000 });
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const input = audioContext.createMediaStreamSource(micStream);
+          processor = audioContext.createScriptProcessor(2048, 1, 1);
+          processor.onaudioprocess = (evt) => {
+            const float32Data = evt.inputBuffer.getChannelData(0);
+            const int16Data = float32ToInt16(float32Data);
+            const b64 = arrayBufferToBase64(int16Data.buffer);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "audio_chunk", audio: b64 }));
+            }
+          };
+          input.connect(processor);
+          processor.connect(audioContext.destination);
+        } catch (err) {
+          console.error("Error accessing microphone:", err);
+        }
       }
-      playbackContext = new AudioContext({ sampleRate: 24000 });
-      nextChunkTime = 0;
-      console.log("Initialized TTS playback AudioContext");
-    }
 
-    function queueTtsChunk(audioB64) {
-      if (!playbackContext) {
-        initTtsPlayback();
+      async function stopRecording() {
+        isRecording = false;
+        btnToggleRecording.textContent = "Start Recording";
+        recordIndicator.textContent = "Not Recording";
+        if (processor) {
+          processor.disconnect();
+          processor.onaudioprocess = null;
+          processor = null;
+        }
+        if (micStream) {
+          micStream.getTracks().forEach((t) => t.stop());
+          micStream = null;
+        }
+        if (audioContext) {
+          await audioContext.close();
+          audioContext = null;
+        }
       }
-      const raw = atob(audioB64);
-      const pcmData = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) {
-        pcmData[i] = raw.charCodeAt(i);
+
+      function initTtsPlayback() {
+        if (playbackContext) {
+          playbackContext.close();
+        }
+        playbackContext = new AudioContext({ sampleRate: 24000 });
+        nextChunkTime = 0;
       }
-      const int16View = new Int16Array(pcmData.buffer);
-      const float32Data = new Float32Array(int16View.length);
-      for (let i = 0; i < int16View.length; i++) {
-        float32Data[i] = int16View[i] / 32767;
+
+      function queueTtsChunk(audioB64) {
+        if (!playbackContext) {
+          initTtsPlayback();
+        }
+        const raw = atob(audioB64);
+        const pcmData = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) {
+          pcmData[i] = raw.charCodeAt(i);
+        }
+        const int16View = new Int16Array(pcmData.buffer);
+        const float32Data = new Float32Array(int16View.length);
+        for (let i = 0; i < int16View.length; i++) {
+          float32Data[i] = int16View[i] / 32767;
+        }
+        const audioBuf = playbackContext.createBuffer(1, float32Data.length, 24000);
+        audioBuf.copyToChannel(float32Data, 0, 0);
+
+        const source = playbackContext.createBufferSource();
+        source.buffer = audioBuf;
+        source.connect(playbackContext.destination);
+
+        const now = playbackContext.currentTime;
+        const startTime = nextChunkTime < now ? now : nextChunkTime;
+        source.start(startTime);
+        nextChunkTime = startTime + audioBuf.duration;
+        currentSource = source;
       }
-      const audioBuf = playbackContext.createBuffer(1, float32Data.length, 24000);
-      audioBuf.copyToChannel(float32Data, 0, 0);
 
-      const source = playbackContext.createBufferSource();
-      source.buffer = audioBuf;
-      source.connect(playbackContext.destination);
-
-      const now = playbackContext.currentTime;
-      const startTime = (nextChunkTime < now) ? now : nextChunkTime;
-      source.start(startTime);
-      nextChunkTime = startTime + audioBuf.duration;
-      console.log(`Queued TTS chunk: length=${audioBuf.duration.toFixed(3)}s, start=${startTime.toFixed(3)}s`);
-
-      // Track the current source
-      currentSource = source;
-    }
-
-    // ---------------------------------------------------------------
-    // Utility functions
-    // ---------------------------------------------------------------
-    // Convert Float32Array to Int16Array for PCM encoding
-    function float32ToInt16(float32Array) {
-      const int16Array = new Int16Array(float32Array.length);
-      for (let i = 0; i < float32Array.length; i++) {
-        let s = Math.max(-1, Math.min(1, float32Array[i]));
-        s = s < 0 ? s * 0x8000 : s * 0x7FFF;
-        int16Array[i] = s;
+      function float32ToInt16(float32Array) {
+        const int16Array = new Int16Array(float32Array.length);
+        for (let i = 0; i < float32Array.length; i++) {
+          let s = Math.max(-1, Math.min(1, float32Array[i]));
+          s = s < 0 ? s * 0x8000 : s * 0x7fff;
+          int16Array[i] = s;
+        }
+        return int16Array;
       }
-      return int16Array;
-    }
 
-    // Convert an ArrayBuffer to a Base64 encoded string
-    function arrayBufferToBase64(buffer) {
-      const binary = String.fromCharCode(...new Uint8Array(buffer));
-      return btoa(binary);
-    }
-  </script>
-</body>
+      function arrayBufferToBase64(buffer) {
+        const binary = String.fromCharCode(...new Uint8Array(buffer));
+        return btoa(binary);
+      }
+    </script>
+  </body>
 </html>

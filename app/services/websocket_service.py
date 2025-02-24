@@ -32,16 +32,16 @@ class WebsocketService:
         agent = OpenAIRealtimeAgent(
             model=config.REALTIME_MODEL,
             client=AsyncOpenAI(),
+            temperature=config.TEMPERATURE,
+            voice=config.VOICE,
             turn_detection=config.TURN_DETECTION_CONFIG,
             system_prompt=config.INSTRUCTIONS,
-            input_audio_transcription=config.INPUT_AUDIO_TRANSCRIPT_CONFIG,
-            input_audio_transcription_prefix=config.INPUT_AUDIO_TRANSCRIPT_PREFIX,
-            output_audio_transcription_prefix=config.OUTPUT_AUDIO_TRANSCRIPT_PREFIX,
-            input_output_transcripts_sep=config.INPUT_OUTPUT_TRANSCRIPTS_SEP,
+            input_audio_transcript_config=config.INPUT_AUDIO_TRANSCRIPT_CONFIG,
             tools=config.TOOL_LIST,
+            tool_schema_list=config.TOOL_SCHEMA_LIST,
             tool_choice=config.TOOL_CHOICE,
+            initial_user_message=config.INITIAL_USER_MESSAGE,
             logger=logger,
-            log_events=config.LOG_REALTIME_EVENTS,
         )
         self.active_sessions[session_id] = agent
 
@@ -94,7 +94,14 @@ class WebsocketService:
         self.session_websockets[session_id] = websocket
 
         agent = self.active_sessions[session_id]
-        connection = await agent.get_connection()
+        realtime_connection = await agent.check_connection()
+        if not realtime_connection:
+            logger.error(f"Failed to get connection for session {session_id}")
+            await websocket.send_json(
+                {"type": "error", "message": "Failed to get connection"}
+            )
+            await websocket.close()
+            return
         logger.info(
             f"Realtime connection established for session {session_id}"
         )
@@ -106,13 +113,14 @@ class WebsocketService:
 
                 if msg_type == "audio_chunk":
                     raw_pcm = base64.b64decode(msg["audio"])
-                    # Just append => indefinite partial transcripts
-                    await connection.input_audio_buffer.append(
-                        audio=base64.b64encode(raw_pcm).decode("utf-8")
-                    )
+                    decoded_audio = base64.b64encode(raw_pcm).decode("utf-8")
+                    await agent.send_audio(audio_b64=decoded_audio)
                     logger.debug(
                         f"Appended {len(raw_pcm)} bytes of PCM for session {session_id}"
                     )
+                elif msg_type == "user_input":
+                    text = msg.get("text")
+                    await agent.send_message(text=text, message_type="user")
 
                 elif msg_type == "disconnect":
                     logger.info("Client requested disconnect.")
@@ -143,9 +151,20 @@ class WebsocketService:
 
             ws = self.session_websockets.get(session_id)
             if ws:
-                if evt_type == "transcript_delta":
+                if evt_type == "input_audio_transcript":
                     await ws.send_json(
-                        {"type": "transcript_delta", "text": payload}
+                        {"type": "input_audio_transcript", "text": payload}
+                    )
+                elif evt_type == "response_audio_transcript_delta":
+                    await ws.send_json(
+                        {
+                            "type": "response_audio_transcript_delta",
+                            "text": payload,
+                        }
+                    )
+                elif evt_type == "response_text_delta":
+                    await ws.send_json(
+                        {"type": "response_text_delta", "text": payload}
                     )
                 elif evt_type == "audio_delta":
                     # payload.delta is base64 audio
