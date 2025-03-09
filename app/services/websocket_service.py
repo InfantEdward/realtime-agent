@@ -111,20 +111,36 @@ class WebsocketService:
                 msg = await websocket.receive_json()
                 msg_type = msg.get("type")
 
-                if msg_type == "audio_chunk":
-                    raw_pcm = base64.b64decode(msg["audio"])
-                    decoded_audio = base64.b64encode(raw_pcm).decode("utf-8")
-                    await agent.send_audio(audio_b64=decoded_audio)
-                    logger.debug(
-                        f"Appended {len(raw_pcm)} bytes of PCM for session {session_id}"
-                    )
-                elif msg_type == "user_input":
-                    text = msg.get("text")
-                    await agent.send_message(text=text, message_type="user")
-
-                elif msg_type == "disconnect":
-                    logger.info("Client requested disconnect.")
-                    break
+                match msg_type:
+                    case "audio_chunk":
+                        raw_pcm = base64.b64decode(msg["audio"])
+                        decoded_audio = base64.b64encode(raw_pcm).decode(
+                            "utf-8"
+                        )
+                        await agent.send_audio(audio_b64=decoded_audio)
+                        logger.debug(
+                            f"Appended {len(raw_pcm)} bytes of PCM for session {session_id}"
+                        )
+                    case "user_input":
+                        text = msg.get("text")
+                        await agent.send_message(
+                            text=text, message_type="user"
+                        )
+                    case "disconnect":
+                        logger.info("Client requested disconnect.")
+                        break
+                    case "user_interrupt":
+                        logger.info("Client interrupted the conversation.")
+                        duration_ms = msg.get("duration_ms")
+                        item_id = msg.get("item_id")
+                        logger.info(
+                            f"Truncating assistant audio at {duration_ms}ms for item_id {item_id}"
+                        )
+                        await agent.truncate_assistant_audio(
+                            audio_end_ms=duration_ms, item_id=item_id
+                        )
+                    case _:
+                        logger.warning(f"Unhandled message type: {msg_type}")
 
         finally:
             # Cleanup
@@ -151,30 +167,35 @@ class WebsocketService:
 
             ws = self.session_websockets.get(session_id)
             if ws:
-                if evt_type == "input_audio_transcript":
-                    await ws.send_json(
-                        {"type": "input_audio_transcript", "text": payload}
-                    )
-                elif evt_type == "response_audio_transcript_delta":
-                    await ws.send_json(
-                        {
-                            "type": "response_audio_transcript_delta",
-                            "text": payload,
-                        }
-                    )
-                elif evt_type == "response_text_delta":
-                    await ws.send_json(
-                        {"type": "response_text_delta", "text": payload}
-                    )
-                elif evt_type == "audio_delta":
-                    # payload.delta is base64 audio
-                    audio_b64 = payload.delta
-                    await ws.send_json(
-                        {
-                            "type": "audio_delta",
-                            "audio": audio_b64,
-                            "item_id": payload.item_id,
-                        }
-                    )
+                match evt_type:
+                    case "input_audio_transcript":
+                        await ws.send_json(
+                            {"type": "input_audio_transcript", "text": payload}
+                        )
+                    case "response_audio_transcript_delta":
+                        await ws.send_json(
+                            {
+                                "type": "response_audio_transcript_delta",
+                                "text": payload,
+                            }
+                        )
+                    case "response_text_delta":
+                        await ws.send_json(
+                            {"type": "response_text_delta", "text": payload}
+                        )
+                    case "audio_delta":
+                        # payload.delta is base64 audio
+                        audio_b64 = payload.delta
+                        await ws.send_json(
+                            {
+                                "type": "audio_delta",
+                                "audio": audio_b64,
+                                "item_id": payload.item_id,
+                            }
+                        )
+                    case "user_audio_started":
+                        await ws.send_json({"type": "user_audio_started"})
+                    case _:
+                        logger.warning(f"Unhandled event type: {evt_type}")
 
         logger.info(f"consume_agent_events -> ended for session {session_id}")

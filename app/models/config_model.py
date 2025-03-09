@@ -1,4 +1,4 @@
-from typing import List, Callable, Optional, Dict, ClassVar
+from typing import List, Callable, Optional, Dict, ClassVar, Union
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -6,7 +6,7 @@ class ConfigModel(BaseModel):
     REALTIME_MODEL: str
     TEMPERATURE: float
     VOICE: Optional[str] = None
-    TURN_DETECTION_CONFIG: Dict[str, str]
+    TURN_DETECTION_CONFIG: Dict[str, Union[str, int, float, bool]]
     INPUT_AUDIO_TRANSCRIPT_CONFIG: Dict[str, str]
     TOOL_CHOICE: Optional[str] = "auto"
     INITIAL_USER_MESSAGE: Optional[str] = None

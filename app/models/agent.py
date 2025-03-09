@@ -89,43 +89,43 @@ class OpenAIRealtimeAgent:
                 self.logger.debug(f"Event: {str(event)}")
                 evt_type = event.type
 
-                if evt_type == "session.created":
-                    self.session = event.session
-                    continue
-                if evt_type == "session.updated":
-                    self.session = event.session
-                    continue
-                if evt_type == "response.audio.delta":
-                    yield ("audio_delta", event)
-
-                if (
-                    evt_type
-                    == "conversation.item.input_audio_transcription.completed"
-                ):
-                    input_transcript = getattr(event, "transcript", "")
-                    yield ("input_audio_transcript", input_transcript)
-
-                if evt_type == "response.audio_transcript.delta":
-                    old_text = response_audio_items.get(event.item_id, "")
-                    new_text = old_text + event.delta
-                    response_audio_items[event.item_id] = new_text
-                    yield ("response_audio_transcript_delta", new_text)
-
-                if evt_type == "response.text.delta":
-                    old_text = response_text_items.get(event.item_id, "")
-                    new_text = old_text + event.delta
-                    response_text_items[event.item_id] = new_text
-                    yield ("response_text_delta", new_text)
-
-                if evt_type == "response.function_call_arguments.done":
-                    input_item, output_item = await get_tool_call_results(
-                        event=event,
-                        tool_list=self._tools_callables or [],
-                        logger=self.logger,
-                    )
-                    await send_tool_call_results(
-                        input_item, output_item, conn, self.logger
-                    )
+                match evt_type:
+                    case "session.created":
+                        self.session = event.session
+                    case "session.updated":
+                        self.session = event.session
+                    case "response.audio.delta":
+                        yield ("audio_delta", event)
+                    case (
+                        "conversation.item.input_audio_transcription.completed"
+                    ):
+                        input_transcript = getattr(event, "transcript", "")
+                        yield ("input_audio_transcript", input_transcript)
+                    case "response.audio_transcript.delta":
+                        old_text = response_audio_items.get(event.item_id, "")
+                        new_text = old_text + event.delta
+                        response_audio_items[event.item_id] = new_text
+                        yield ("response_audio_transcript_delta", new_text)
+                    case "response.text.delta":
+                        old_text = response_text_items.get(event.item_id, "")
+                        new_text = old_text + event.delta
+                        response_text_items[event.item_id] = new_text
+                        yield ("response_text_delta", new_text)
+                    case "response.function_call_arguments.done":
+                        input_item, output_item = await get_tool_call_results(
+                            event=event,
+                            tool_list=self._tools_callables or [],
+                            logger=self.logger,
+                        )
+                        await send_tool_call_results(
+                            input_item, output_item, conn, self.logger
+                        )
+                    case "input_audio_buffer.speech_started":
+                        yield ("user_audio_started", event)
+                    case "input_audio_buffer.speech_stopped":
+                        yield ("user_audio_stopped", event)
+                    case _:
+                        yield (evt_type, event)
 
     async def send_audio(self, audio_b64: str) -> None:
         """
@@ -159,6 +159,18 @@ class OpenAIRealtimeAgent:
                 connection=self.connection,
                 logger=self.logger,
             )
+
+    async def truncate_assistant_audio(
+        self, audio_end_ms: int, item_id: str
+    ) -> None:
+        """
+        Truncates the assistant's audio buffer.
+        """
+        await self.connection.conversation.item.truncate(
+            audio_end_ms=audio_end_ms,
+            content_index=0,
+            item_id=item_id,
+        )
 
     @staticmethod
     def build_tools(

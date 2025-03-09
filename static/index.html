@@ -151,10 +151,22 @@
       let audioContext = null;
       let micStream = null;
       let processor = null;
+
+      // --- Playback-related variables ---
       let playbackContext = null;
       let nextChunkTime = 0;
+
+      // Track which item_id is currently being played.
       let currentItemId = null;
+
+      // The AudioBufferSourceNode for the chunk currently being played (if any).
       let currentSource = null;
+
+      // The time (in seconds, according to AudioContext) when the current chunk starts playing
+      let currentChunkStartTime = 0;
+
+      // Accumulate total milliseconds played for the current item
+      let totalPlayedDuration = 0;
 
       const btnStartSession = document.getElementById("btnStartSession");
       const btnStopSession = document.getElementById("btnStopSession");
@@ -164,12 +176,40 @@
       const userText = document.getElementById("userText");
       const btnSendText = document.getElementById("btnSendText");
 
+      // --- Helper function to stop current audio playback ---
+      function stopAudioPlayback() {
+        if (currentSource) {
+          try {
+            currentSource.stop();
+          } catch(e) {
+            // ignore if already stopped
+          }
+          currentSource.disconnect();
+          currentSource = null;
+        }
+        if (playbackContext) {
+          playbackContext.close();
+          playbackContext = null;
+        }
+        nextChunkTime = 0;
+        currentChunkStartTime = 0;
+      }
+
+      // --- Computes how many ms have been played in the current chunk so far ---
+      function getPlayedDuration() {
+        if (!playbackContext || !currentChunkStartTime) return 0;
+        const elapsedSec = playbackContext.currentTime - currentChunkStartTime;
+        // Clamp negative to 0 just in case
+        return elapsedSec > 0 ? Math.floor(elapsedSec * 1000) : 0;
+      }
+
       btnStartSession.addEventListener("click", async () => {
         const resp = await fetch("/start_session", { method: "POST" });
         const data = await resp.json();
         sessionId = data.session_id;
         sessionIdSpan.textContent = sessionId;
 
+        // Re-create WS connection
         if (ws) ws.close();
         ws = new WebSocket(`ws://${location.host}/ws/audio/${sessionId}`);
         ws.onopen = () => {
@@ -178,31 +218,49 @@
         };
         ws.onmessage = (evt) => {
           const msg = JSON.parse(evt.data);
-          if (msg.type === "input_audio_transcript") {
-            document.getElementById("inputTranscript").textContent = msg.text;
-          } else if (
-            msg.type === "response_audio_transcript_delta" ||
-            msg.type === "response_text_delta"
-          ) {
-            document.getElementById("responseTranscript").textContent =
-              msg.text;
-          } else if (msg.type === "audio_delta") {
-            if (currentItemId !== msg.item_id) {
-              if (currentSource) {
-                currentSource.stop();
-                currentSource.disconnect();
-                currentSource = null;
+          switch (msg.type) {
+            case "input_audio_transcript":
+              document.getElementById("inputTranscript").textContent = msg.text;
+              break;
+
+            case "response_audio_transcript_delta":
+            case "response_text_delta":
+              document.getElementById("responseTranscript").textContent = msg.text;
+              break;
+
+            case "audio_delta":
+              // If a new audio_delta arrives with a new item_id, we 
+              // stop the old audio and reset playback for the new item.
+              if (currentItemId !== msg.item_id) {
+                stopAudioPlayback();
+                totalPlayedDuration = 0;
+                currentItemId = msg.item_id;
+                initTtsPlayback();
               }
-              if (playbackContext) {
-                playbackContext.close();
+              // Queue next chunk for whichever item_id is now current
+              queueTtsChunk(msg.audio);
+              break;
+
+            case "user_audio_started":
+              // Only interrupt if we were actually playing something
+              if (currentItemId !== null) {
+                totalPlayedDuration += getPlayedDuration();
+                if (totalPlayedDuration > 0) {
+                  ws.send(JSON.stringify({
+                    type: "user_interrupt",
+                    duration_ms: totalPlayedDuration,
+                    item_id: currentItemId
+                  }));
+                }
+                totalPlayedDuration = 0;
+                stopAudioPlayback();
+                currentItemId = null;
               }
-              playbackContext = null;
-              initTtsPlayback();
-              currentItemId = msg.item_id;
-            }
-            queueTtsChunk(msg.audio);
-          } else if (msg.type === "error") {
-            console.error("Server error:", msg.message);
+              break;
+
+            case "error":
+              console.error("Server error:", msg.message);
+              break;
           }
         };
         ws.onclose = () => {
@@ -229,10 +287,7 @@
           ws.close();
           ws = null;
         }
-        if (playbackContext) {
-          playbackContext.close();
-          playbackContext = null;
-        }
+        stopAudioPlayback();
         currentItemId = null;
       });
 
@@ -245,15 +300,37 @@
         }
       });
 
+      // If the user clicks Send while audio is playing, send user_interrupt.
       btnSendText.addEventListener("click", () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          const currentText = userText.value;
-          ws.send(JSON.stringify({ type: "user_input", text: currentText }));
-          document.getElementById("inputTranscript").textContent = currentText; // Display the typed text
-          userText.value = "";
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+        // If we are currently playing TTS (currentItemId != null), that means
+        // the user is "interrupting" by typing text. Send "user_interrupt" now.
+        if (currentItemId !== null) {
+          // Accumulate partial chunk time
+          totalPlayedDuration += getPlayedDuration();
+          if (totalPlayedDuration > 0) {
+            ws.send(JSON.stringify({
+              type: "user_interrupt",
+              duration_ms: totalPlayedDuration,
+              item_id: currentItemId
+            }));
+          }
+          totalPlayedDuration = 0;
+          stopAudioPlayback();
+          currentItemId = null;
         }
+
+        // Now send the user's text
+        const currentText = userText.value;
+        ws.send(JSON.stringify({ type: "user_input", text: currentText }));
+
+        // Display the typed text in the "inputTranscript" box
+        document.getElementById("inputTranscript").textContent = currentText;
+        userText.value = "";
       });
 
+      // If the user presses Enter, mimic the Send button
       userText.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           event.preventDefault();
@@ -310,6 +387,7 @@
         }
         playbackContext = new AudioContext({ sampleRate: 24000 });
         nextChunkTime = 0;
+        currentChunkStartTime = 0;
       }
 
       function queueTtsChunk(audioB64) {
@@ -335,9 +413,21 @@
 
         const now = playbackContext.currentTime;
         const startTime = nextChunkTime < now ? now : nextChunkTime;
+        // Record the start time for partial‐chunk calculations:
+        currentChunkStartTime = startTime;
+
         source.start(startTime);
         nextChunkTime = startTime + audioBuf.duration;
         currentSource = source;
+
+        // If a chunk plays fully without interruption, add its duration at the end.
+        source.onended = () => {
+          // We fully played that chunk, so add its duration
+          totalPlayedDuration += Math.floor(audioBuf.duration * 1000);
+          // Reset chunk start (no partial chunk in progress anymore)
+          currentChunkStartTime = 0;
+          currentSource = null;
+        };
       }
 
       function float32ToInt16(float32Array) {
