@@ -1,56 +1,76 @@
 # realtime-agent
 
-Welcome to the `realtime-agent` project! This application leverages OpenAI's Realtime API to provide seamless, real-time interactions. It allows users to start a session, capture both audio and text input, and receive immediate transcriptions along with text-to-speech (TTS) playback directly in the browser.
+![App Demo](static/app_demo.png)
+
+Welcome to the `realtime-agent` project! This application is a **multi-agent** app, allowing you to define and interact with multiple agents, each with their own tools and behaviors. The app leverages OpenAI's Realtime API for seamless, real-time audio and text interactions, including agent switching and tool invocation.
+
+## Key Features
+- **Multi-agent support:** Define any number of agents in `static/agents.json`.
+- **Agent switching:** Agents can request to switch context to another agent, or users can manually switch agents from the interface.
+- **Custom tools:** Easily add tools for agents using decorators, or define schemas manually.
+- **Realtime audio & text:** Start sessions, record audio, send text, and receive instant transcriptions and TTS playback.
+
+---
+
+## Agents & Configuration
+
+### Defining Agents
+Agents are defined in `static/agents.json`. Each agent entry supports the following fields:
+- `name`: The agent's name (must be unique).
+- `description`: (Optional) Description of the agent.
+- `INSTRUCTIONS`: The base prompt/instructions for the agent.
+- `SWITCH_CONTEXT`: The prompt appended to `INSTRUCTIONS` when an agent requests a switch (required for agent switching).
+- `INITIAL_USER_MESSAGE`: The initial user message sent to the agent at session start (remains as in previous versions).
+- `SWITCH_USER_MESSAGE`: (Optional) Prompt sent to the newly switched agent to answer after a switch is requested.
+- `SWITCH_NOTIFICATION_MESSAGE`: The output message shown to the agent when a switch is requested (lets the agent know if the switch was successful).
+- `TOOL_NAMES`: List of tool names the agent can access. Names must match those defined in `user_tools.py` or `route_tool.py`.
+- `TOOL_SCHEMA_LIST`: (Optional) List of schemas for the tools. If omitted, schemas are auto-generated from the tool docstrings.
+
+**Note:** The number of agents in `agents.json` determines how many agents are available in the app.
+
+### Route Tool
+- There can only be **one** route tool (decorated with `@route_tool` from `app.utils.tool_utils`).
+- If you want agents to be able to switch between each other, include the route tool in their `TOOL_NAMES`.
+- You can change the route tool's definition and schema in `app/route_tool.py`.
+
+### Custom Tools
+- Define tools using the `@user_tool` decorator from `app.utils.tool_utils` in `user_tools.py`.
+- Schemas are auto-generated from docstrings, or you can specify them manually in `TOOL_SCHEMA_LIST`.
+- All tool names in `TOOL_NAMES` must match the actual function names in `user_tools.py` or `route_tool.py`.
+
+---
 
 ## Getting Started
-
-Follow these steps to run the app locally:
 
 1. **Create a virtual environment:**
     ```sh
     python -m venv venv
     ```
-
 2. **Activate the virtual environment:**
-    - On Windows:
-        ```sh
-        .\venv\Scripts\activate
-        ```
     - On macOS/Linux:
         ```sh
         source venv/bin/activate
         ```
-
-3. **Install the required packages:**
+    - On Windows:
+        ```sh
+        .\venv\Scripts\activate
+        ```
+3. **Install requirements:**
     ```sh
     pip install -r requirements.txt
     ```
-
-4. **Set up your environment variables:**
-    Create a `.env` file in the project's root directory with the following content:
-    ```env
-    OPENAI_API_KEY=""
-    REALTIME_MODEL="gpt-4o-realtime-preview-2024-12-17"
-    TEMPERATURE=0.8
-    VOICE="alloy"
-    TURN_DETECTION_CONFIG={"type": "server_vad"}
-    INPUT_AUDIO_TRANSCRIPT_CONFIG={"model": "whisper-1"}
-    TOOL_CHOICE="auto"
-
-    LOG_LEVEL=INFO
-    LOG_DIR=./logs
-    EXC_INFO=False
-
-    API_HOST="0.0.0.0"
-    API_PORT=8000
+4. **Set the required environment variable:**
+    The only required environment variable is your OpenAI API key:
+    ```sh
+    export OPENAI_API_KEY="..."
     ```
-
-    **Note:** Only `OPENAI_API_KEY`, `REALTIME_MODEL`, and `TURN_DETECTION_CONFIG` are mandatory.
-
-5. **Run the app using the main script:**
+    You can set this in your shell, or in your deployment environment. No `.env` file is required.
+5. **Run the app:**
     ```sh
     python main.py
     ```
+
+---
 
 ## Running with Docker
 
@@ -60,67 +80,72 @@ You can also run the app using Docker:
     ```sh
     docker build -t realtime-agent .
     ```
-
 2. **Run the Docker container:**
     ```sh
-    docker run -p 8000:8000 --env-file .env realtime-agent
+    docker run -p 8000:8000 -e OPENAI_API_KEY="..." realtime-agent
     ```
-
+    You can also pass any other environment variables as needed using `-e` flags.
 3. **Run the Docker container with a volume for logs:**
     ```sh
-    docker run -p 8000:8000 --env-file .env -v $(pwd)/logs:/app/logs realtime-agent
+    docker run -p 8000:8000 -e OPENAI_API_KEY="..." -v $(pwd)/logs:/app/logs realtime-agent
     ```
+
+---
 
 ## Using the Browser Frontend
 
-Once the app is running, open your browser and navigate to `http://localhost:8000`. The frontend now supports multiple interaction methods:
+- **Start/Stop Session:** Use the buttons to control the session. Session ID is displayed.
+- **Agent Selection:** Use the dropdown to manually switch between agents at any time.
+- **Audio Recording:** Start/stop recording to send audio to the current agent.
+- **Text Input:** Type and send text to the current agent.
+- **Transcripts:** Input and response transcripts are shown in real time.
 
-### Session Controls
+---
 
-- **Start Session:**  
-  Click the **Start Session** button to initiate a new session. The session ID will be displayed, and a WebSocket connection is opened to handle real-time communication.
+## Configuration Notes
 
-- **Stop Session:**  
-  Click the **Stop Session** button to end the session. This stops audio recording (if active), clears the transcript displays, and closes the WebSocket connection.
+You can optionally add the following variables to `static/app_config.json` to control logging and error reporting:
 
-### Audio Recording & TTS Playback
+- `LOG_LEVEL` (e.g. `DEBUG`, `INFO`)
+- `LOG_DIR` (e.g. `./logs`)
+- `EXC_INFO` (`True` or `False`)
 
-- **Start/Stop Recording:**  
-  The **Start Recording** button toggles to **Stop Recording** when recording is active. When activated, the browser will capture audio from your microphone and send audio chunks via the WebSocket. Incoming `audio_delta` messages from the server trigger TTS playback, ensuring seamless audio playback using an AudioContext with a 24kHz sample rate.
+> **Note:** If you set any of these as environment variables, the environment variable will take priority over the value in `app_config.json`.
 
-### Text Input
+---
 
-- **Send Text:**  
-  Use the text field to type messages and click **Send** (or press Enter). The text is sent to the agent, and your input is also displayed in the transcript area. This allows you to combine audio and text interactions in real time.
+## Customizing Agents and Tools
 
-### Transcription Displays
+- **To add a new agent:** Add an entry to `static/agents.json` with the required fields.
+- **To add a new tool:**
+    - Define a function in `app/user_tools.py` and decorate it with `@user_tool`.
+    - Follow the format of the existing examples in `user_tools.py` (e.g., `obtener_clima`): include the decorator, function signature with typed parameters, and a docstring with a description, `------` separator, and `Parameters` section.
+    - Add the tool's name to the agent's `TOOL_NAMES` in `static/agents.json`.
+    - (Optional) Add the schemas to `TOOL_SCHEMA_LIST` if you want to override auto-generation.
 
-There are two transcript boxes:
-- **Input Transcript:** Shows transcriptions from either the user’s spoken words or manually entered text.
-- **Response Transcript:** Displays transcriptions or text deltas from the agent's responses.
+    Example:
+    ```python
+    from app.utils.tool_utils import user_tool
 
-## Customizing the Tools
+    @user_tool
+    def ejemplo_herramienta(parametro: str) -> str:
+        """Ejemplo de herramienta de usuario dummy que devuelve un saludo.
+        ------
+        Parameters:
+            parametro: Texto de entrada para la herramienta.
+        """
+        return f"Hola, {parametro}!"
+    ```
+- **To enable agent switching:**
+    - Include the route tool in the agent's `TOOL_NAMES`.
+    - Ensure `SWITCH_CONTEXT` and (optionally) `SWITCH_USER_MESSAGE` and `SWITCH_NOTIFICATION_MESSAGE` are set.
 
-You can easily customize the tools available to the agent by modifying the `TOOL_LIST` in the `app/config.py` file. If you need to create custom tools, ensure they have a docstring and follow the format of the `obtener_clima` function in `app/user_tools.py`. The first part of the docstring should be the description of the tool, followed by a "------" separating that description and the description of every input argument.
+---
 
-### Example:
+## Notes
+- The number of agents in `agents.json` = number of agents available in the app.
+- Only one route tool is allowed per agent.
+- You can manually switch agents from the interface at any time.
+- All tool names must match the function names in `user_tools.py` or `route_tool.py`.
 
-```python
-def example_tool(argument: str) -> str:
-    """This is an example tool.
-
-    ------
-    Parameters:
-        argument: Description of the argument.
-    """
-    return f"Processed {argument}"
-```
-By default, a schema will be created for each function in `TOOL_LIST`. If you wish to define the schemas for the functions in `TOOL_LIST` yourself, you can pass the list of schemas in `TOOL_SCHEMA_LIST`. Make sure the schema list follows OpenAI's Realtime API required format for function calling.
-
-## Customizing the Agent's Instructions
-
-The instructions given to the agent can be customized by modifying the `INSTRUCTIONS` variable in the `app/config.py` file.
-
-## Customizing the Initial User Message
-
-You can prompt the agent to generate an initial response as soon as you click the **Start Session** button by sending an initial message to the server. This prompt can be customized by modifying the `INITIAL_USER_MESSAGE` variable in the `app/config.py` file.
+---

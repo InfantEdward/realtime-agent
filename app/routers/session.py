@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import HTMLResponse
-
+from fastapi.responses import HTMLResponse, JSONResponse
+from app.config import get_agent_configs
 
 router = APIRouter()
 
@@ -12,6 +12,15 @@ async def serve_index():
     """
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
+
+
+@router.get("/agents", response_class=JSONResponse)
+async def get_agents():
+    """
+    Returns the list of agent names and configs for the frontend.
+    """
+    agents = get_agent_configs()
+    return [{"name": a.name, "tools": a.TOOL_NAMES or []} for a in agents]
 
 
 @router.post("/start_session")

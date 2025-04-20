@@ -1,16 +1,16 @@
 from logging import Logger, FileHandler, StreamHandler, Formatter
 from pathlib import Path
 from datetime import datetime
-
-from app.config import config
+from app.config import get_app_config
 
 
 class CustomLogger(Logger):
     def __init__(self, name: str):
         super().__init__(name)
 
-        # Set log level from config
-        level = config.LOG_LEVEL.upper()
+        app_config = get_app_config()
+        # Set log level from AppConfigModel
+        level = app_config.LOG_LEVEL if app_config else "INFO"
         self.setLevel(level)
 
         # Create formatter
@@ -20,8 +20,8 @@ class CustomLogger(Logger):
 
         # Create handlers
         # 1) File handler if LOG_DIR is set
-        if config.LOG_DIR:
-            log_dir_path = Path(config.LOG_DIR)
+        if app_config and app_config.LOG_DIR:
+            log_dir_path = Path(app_config.LOG_DIR)
             log_dir_path.mkdir(parents=True, exist_ok=True)
             log_file = (
                 log_dir_path
@@ -37,7 +37,7 @@ class CustomLogger(Logger):
         self.addHandler(stream_handler)
 
         # Store exc_info flag
-        self.exc_info = config.EXC_INFO
+        self.exc_info = app_config.EXC_INFO if app_config else False
 
     def error(self, msg, *args, **kwargs):
         super().error(msg, *args, exc_info=self.exc_info, **kwargs)

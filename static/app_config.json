@@ -1,0 +1,5 @@
+{
+  "LOG_LEVEL": "INFO",
+  "LOG_DIR": "./logs",
+  "EXC_INFO": false
+}

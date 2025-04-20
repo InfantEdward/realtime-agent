@@ -1,449 +1,614 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Realtime Agent App</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 10px;
-        background: url("/static/app_background.webp") no-repeat center center fixed;
-        background-size: cover;
-        color: #ede0d4;
-        font-family: "Open Sans", sans-serif;
-        line-height: 1.6;
-      }
-      body::before {
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(12, 8, 6, 0.7);
-        z-index: -1;
-      }
-      h1 {
-        font-family: "Merriweather", serif;
-        font-size: 2.5rem;
-        text-align: center;
-        margin: 1rem 0 1rem;
-        color: #f8e1c4;
-        text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
-      }
-      .instructions-container {
-        max-width: 650px;
-        margin: 0 auto 0.7rem;
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Realtime App</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="preload" as="image" href="/static/app_background.webp">
+
+  <style>
+    :root {
+      --color-bg-start: #001f3f;
+      --color-bg-end: #002b5f;
+      --color-panel-bg: rgba(18, 24, 38, 0.6);
+      --color-panel-border: rgba(255, 255, 255, 0.1);
+      --color-text: #e0e6f1;
+      --color-accent: #4facfe;
+      --glass-blur: 12px;
+    }
+
+    html { height: 100%; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: "Open Sans", sans-serif;
+      background: url("/static/app_background.webp") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--color-text);
+      height: 100vh; overflow: hidden; position: relative;
+    }
+    body::before {
+      content:""; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: -1;
+    }
+
+    .app-container {
+      max-width: 480px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: var(--color-panel-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--color-panel-border);
+      border-radius: 16px;
+      box-shadow:
+        0 0 16px 8px rgba(40,90,180,0.32), /* darker blue glow */
+        0 0 32px 16px rgba(40,90,180,0.18), /* softer darker blue outer */
+        0 8px 32px rgba(0,0,0,0.37); /* original shadow */
+    }
+
+    h1 {
+      font-family: "Merriweather", serif;
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      letter-spacing: 1px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #2050a0, #3573c7); /* darker blue gradient */
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.3s;
+    }
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .button:not(:disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .button.stop {
+      background: linear-gradient(135deg, #a02020, #c73535); /* red gradient */
+      color: #fff;
+      border: none;
+    }
+    .button.stop:hover:not(:disabled) {
+      background: linear-gradient(135deg, #c73535, #a02020);
+      box-shadow: 0 4px 12px rgba(160,32,32,0.3);
+    }
+
+    .dropdown {
+      flex: 1;
+      margin-right: 1rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--color-text);
+      appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg fill='%23e0e6f1' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+    }
+
+    .session-id {
+      font-weight: 600;
+    }
+
+    .waveform-container {
+      width: 100%;
+      height: 80px;
+      margin: 0.5rem 0 1rem;
+      background: var(--color-panel-bg);
+      border: 1px solid var(--color-panel-border);
+      border-radius: 8px;
+      backdrop-filter: blur(var(--glass-blur));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .transcript-box {
+      width: 100%;
+      min-height: 60px;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--color-panel-bg);
+      border: 1px solid var(--color-panel-border);
+      border-radius: 8px;
+      backdrop-filter: blur(var(--glass-blur));
+      font-size: 1rem;
+      color: var(--color-text);
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .input-text-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .input-text {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--color-text);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Smooth transitions */
+    .app-container,
+    .transcript-box,
+    .button,
+    .input-text {
+      transition: all 0.3s ease-in-out;
+    }
+    .control-row > .button:not(:last-child) {
+      margin-right: 1rem;
+    }
+    .button:focus {
+      box-shadow: 0 0 10px var(--color-accent);
+      outline: none;
+    }
+    .transcript-box:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+    @media (max-width: 600px) {
+      .app-container {
+        width: 90%;
         padding: 1rem;
-        background: rgba(28, 20, 18, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        text-align: center;
-        font-size: 0.9rem;
       }
-      .controls-container {
-        text-align: center;
-      }
-      .user-input-container {
-        max-width: 900px;
-        margin: 0.5rem auto;
-        padding: 1rem;
-        background: rgba(28, 20, 18, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        height: 75px;
-        display: flex;
-        align-items: center;
-      }
-      .user-input-container input {
-        width: 95%;
-        padding: 0.5rem;
-        border: 1px solid #3e2723;
-        border-radius: 4px;
-        margin-right: 0.5rem;
-        font-size: 1rem;
-        background: rgba(28, 20, 18, 0.85);
-        color: #f5e1c4;
-      }
-      button {
-        margin: 0.5rem;
-        padding: 0.8rem 1.5rem;
-        font-weight: 600;
-        border: 1px solid #8d6e63;
-        border-radius: 4px;
-        background: linear-gradient(145deg, #5d4037, #4e342e);
-        color: #f5e1c4;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
-        font-family: "Open Sans", sans-serif;
-      }
-      button:hover:enabled {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        background: linear-gradient(145deg, #8d6e63, #6d4b3a);
-      }
-      button:disabled {
-        background: #3e2723;
-        border-color: #3e2723;
-        cursor: not-allowed;
-      }
-      #sessionId {
-        font-weight: 600;
-        color: #f5e1c4;
-      }
-      .transcript-box {
-        white-space: pre-wrap;
-        padding: 1rem;
-        max-width: 900px;
-        min-height: 75px;
-        border-radius: 8px;
-        background: rgba(28, 20, 18, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #ede0d4;
-        font-size: 1rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        margin: 0.5rem auto;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Realtime Agent App</h1>
-    <div class="instructions-container">
-      <p>
-        Welcome! Click "Start Session" to begin. Once the session starts,
-        "Start Recording" will be enabled. Click it to capture your audio in real time. Click again to pause recording. When you're finished, click "Stop Session" to end.
-        Additionally, you can type text in the input field below and click "Send" (or press Enter) to submit text input.
-      </p>
+    }
+
+    /* --------- NEW AESTHETIC RULES --------- */
+
+    /* Ghost (secondary) button */
+    .button.secondary {
+      background: transparent;
+      border: 1px solid var(--color-panel-border);
+      color: var(--color-text);
+      /* Add darker blue border for secondary button */
+      border-color: #3573c7;
+    }
+    .button.secondary:hover:not(:disabled) {
+      background-color: rgba(53, 115, 199, 0.12); /* subtle blue hover */
+    }
+
+    /* Full-width recording button */
+    .button.full-width {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Darker, padded transcript “cards” */
+    .transcript-box {
+      background-color: rgba(18, 24, 38, 0.8);
+      padding: 1.25rem;
+    }
+
+    /* Match input-text field to the cards */
+    .input-text {
+      background-color: rgba(18, 24, 38, 0.8);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+    <h1>Realtime App</h1>
+
+    <div class="control-row">
+      <button id="btnStartSession" class="button">Start Session</button>
+      <button id="btnStopSession" class="button stop">Stop Session</button>
     </div>
-    <div class="controls-container">
-      <div>
-        <button id="btnStartSession">Start Session</button>
-        <button id="btnStopSession">Stop Session</button>
-      </div>
-      <p>Session ID: <span id="sessionId">N/A</span></p>
-      <button id="btnToggleRecording" disabled>Start Recording</button>
-      <span id="recordIndicator">Not Recording</span>
+
+    <div class="control-row">
+      <select id="agentSelect" class="dropdown"></select>
+      <span class="session-id">Session ID: <span id="sessionId">N/A</span></span>
     </div>
-    <div class="user-input-container">
-      <input type="text" id="userText" placeholder="Type text here..." />
-      <button id="btnSendText">Send</button>
+
+    <div class="control-row">
+      <button id="btnToggleRecording" class="button full-width" disabled>START/STOP RECORDING</button>
+      <span id="recordIndicator" style="margin-left:1rem;font-weight:600;">Not Recording</span>
     </div>
-    <!-- First transcript box for input_audio_transcript events -->
+
+    <div class="waveform-container">
+      <canvas id="waveCanvas"></canvas>
+    </div>
+
+    <label for="inputTranscript">Input Transcript</label>
     <div id="inputTranscript" class="transcript-box"></div>
-    <!-- Second transcript box for response_audio_transcript_delta or response_text_delta events -->
+
+    <label for="responseTranscript">Output Transcript</label>
     <div id="responseTranscript" class="transcript-box"></div>
 
-    <script>
-      let sessionId = null;
-      let ws = null;
-      let isRecording = false;
-      let audioContext = null;
-      let micStream = null;
-      let processor = null;
+    <div class="input-text-row">
+      <input type="text" id="userText" class="input-text" placeholder="Type text here..." />
+      <button id="btnSendText" class="button send-button">Send</button>
+    </div>
+  </div>
 
-      // --- Playback-related variables ---
-      let playbackContext = null;
-      let nextChunkTime = 0;
+  <script>
+    // ----- existing JavaScript unchanged -----
+    let analyser, dataArray, animationId;
+    let isWaveformActive = false;
+    let sessionId = null, ws = null, isRecording = false;
+    let audioContext = null, micStream = null, processor = null;
+    let playbackContext = null, nextChunkTime = 0;
+    let currentItemId = null, currentSource = null;
+    let currentChunkStartTime = 0, totalPlayedDuration = 0;
+    let micAnalyser = null, micDataArray = null;
+    let playbackAnalyser = null, playbackDataArray = null;
 
-      // Track which item_id is currently being played.
-      let currentItemId = null;
+    const btnStartSession    = document.getElementById("btnStartSession");
+    const btnStopSession     = document.getElementById("btnStopSession");
+    const btnToggleRecording = document.getElementById("btnToggleRecording");
+    const recordIndicator    = document.getElementById("recordIndicator");
+    const sessionIdSpan      = document.getElementById("sessionId");
+    const userText           = document.getElementById("userText");
+    const btnSendText        = document.getElementById("btnSendText");
+    const agentSelect        = document.getElementById("agentSelect");
+    const inputTranscript    = document.getElementById("inputTranscript");
+    const responseTranscript = document.getElementById("responseTranscript");
+    const waveCanvas         = document.getElementById("waveCanvas");
+    const waveCtx            = waveCanvas.getContext("2d");
+    let currentAgent = null;
 
-      // The AudioBufferSourceNode for the chunk currently being played (if any).
-      let currentSource = null;
+    function resizeCanvas() {
+      waveCanvas.width  = waveCanvas.parentElement.clientWidth;
+      waveCanvas.height = waveCanvas.parentElement.clientHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
 
-      // The time (in seconds, according to AudioContext) when the current chunk starts playing
-      let currentChunkStartTime = 0;
+    function drawBars() {
+      waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+      const width = waveCanvas.width, height = waveCanvas.height;
+      const midY = height / 2;
 
-      // Accumulate total milliseconds played for the current item
-      let totalPlayedDuration = 0;
-
-      const btnStartSession = document.getElementById("btnStartSession");
-      const btnStopSession = document.getElementById("btnStopSession");
-      const btnToggleRecording = document.getElementById("btnToggleRecording");
-      const recordIndicator = document.getElementById("recordIndicator");
-      const sessionIdSpan = document.getElementById("sessionId");
-      const userText = document.getElementById("userText");
-      const btnSendText = document.getElementById("btnSendText");
-
-      // --- Helper function to stop current audio playback ---
-      function stopAudioPlayback() {
-        if (currentSource) {
-          try {
-            currentSource.stop();
-          } catch(e) {
-            // ignore if already stopped
-          }
-          currentSource.disconnect();
-          currentSource = null;
+      if (micAnalyser && micDataArray) {
+        micAnalyser.getByteFrequencyData(micDataArray);
+        const barWidth = width / micDataArray.length;
+        waveCtx.save();
+        waveCtx.globalAlpha = 0.7;
+        waveCtx.fillStyle = "#4facfe";
+        for (let i = 0; i < micDataArray.length; i++) {
+          const v = micDataArray[i] / 255;
+          const h = v * (height / 2);
+          waveCtx.fillRect(i * barWidth, midY - h, barWidth * 0.8, h);
         }
-        if (playbackContext) {
-          playbackContext.close();
-          playbackContext = null;
-        }
-        nextChunkTime = 0;
-        currentChunkStartTime = 0;
+        waveCtx.restore();
       }
 
-      // --- Computes how many ms have been played in the current chunk so far ---
-      function getPlayedDuration() {
-        if (!playbackContext || !currentChunkStartTime) return 0;
-        const elapsedSec = playbackContext.currentTime - currentChunkStartTime;
-        // Clamp negative to 0 just in case
-        return elapsedSec > 0 ? Math.floor(elapsedSec * 1000) : 0;
+      if (playbackAnalyser && playbackDataArray) {
+        playbackAnalyser.getByteFrequencyData(playbackDataArray);
+        const barWidth = width / playbackDataArray.length;
+        waveCtx.save();
+        waveCtx.globalAlpha = 0.7;
+        waveCtx.fillStyle = "#00c6ff";
+        for (let i = 0; i < playbackDataArray.length; i++) {
+          const v = playbackDataArray[i] / 255;
+          const h = v * (height / 2);
+          waveCtx.fillRect(i * barWidth, midY, barWidth * 0.8, h);
+        }
+        waveCtx.restore();
       }
+    }
 
-      btnStartSession.addEventListener("click", async () => {
-        const resp = await fetch("/start_session", { method: "POST" });
-        const data = await resp.json();
-        sessionId = data.session_id;
-        sessionIdSpan.textContent = sessionId;
+    function startWaveformAnimation() {
+      if (animationId) return;
+      isWaveformActive = true;
+      (function render() {
+        if (!isWaveformActive) return;
+        if (micAnalyser || playbackAnalyser) drawBars();
+        animationId = requestAnimationFrame(render);
+      })();
+    }
 
-        // Re-create WS connection
-        if (ws) ws.close();
-        ws = new WebSocket(`ws://${location.host}/ws/audio/${sessionId}`);
-        ws.onopen = () => {
-          btnToggleRecording.disabled = false;
-          initTtsPlayback();
-        };
-        ws.onmessage = (evt) => {
-          const msg = JSON.parse(evt.data);
-          switch (msg.type) {
-            case "input_audio_transcript":
-              document.getElementById("inputTranscript").textContent = msg.text;
-              break;
+    function stopWaveformAnimation() {
+      isWaveformActive = false;
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = null;
+      waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+    }
 
-            case "response_audio_transcript_delta":
-            case "response_text_delta":
-              document.getElementById("responseTranscript").textContent = msg.text;
-              break;
+    function sendWithAgent(type, payload = {}) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ ...payload, type, agent_name: currentAgent }));
+    }
 
-            case "audio_delta":
-              // If a new audio_delta arrives with a new item_id, we 
-              // stop the old audio and reset playback for the new item.
-              if (currentItemId !== msg.item_id) {
-                stopAudioPlayback();
-                totalPlayedDuration = 0;
-                currentItemId = msg.item_id;
-                initTtsPlayback();
-              }
-              // Queue next chunk for whichever item_id is now current
-              queueTtsChunk(msg.audio);
-              break;
-
-            case "user_audio_started":
-              // Only interrupt if we were actually playing something
-              if (currentItemId !== null) {
-                totalPlayedDuration += getPlayedDuration();
-                if (totalPlayedDuration > 0) {
-                  ws.send(JSON.stringify({
-                    type: "user_interrupt",
-                    duration_ms: totalPlayedDuration,
-                    item_id: currentItemId
-                  }));
-                }
-                totalPlayedDuration = 0;
-                stopAudioPlayback();
-                currentItemId = null;
-              }
-              break;
-
-            case "error":
-              console.error("Server error:", msg.message);
-              break;
-          }
-        };
-        ws.onclose = () => {
-          console.log("WebSocket closed");
-        };
+    async function loadAgents() {
+      const resp = await fetch("/agents");
+      const agents = await resp.json();
+      agentSelect.innerHTML = "";
+      agents.forEach(a => {
+        const o = document.createElement("option");
+        o.value = a.name; o.textContent = a.name;
+        agentSelect.appendChild(o);
       });
+      if (agents.length) {
+        currentAgent = agents[0].name;
+        agentSelect.value = currentAgent;
+      }
+    }
+    agentSelect.addEventListener("change", () => {
+      currentAgent = agentSelect.value;
+      sendWithAgent("switch_agent",{ agent_name: currentAgent });
+      stopAudioPlayback();
+      currentItemId = null;
+      inputTranscript.textContent = "";
+      responseTranscript.textContent = "";
+    });
+    loadAgents();
 
-      btnStopSession.addEventListener("click", async () => {
-        if (!sessionId) return;
-        await fetch(`/stop_session?session_id=${sessionId}`, {
-          method: "POST",
-        });
-        sessionIdSpan.textContent = "N/A";
-        sessionId = null;
-        // Clear both transcript boxes when session stops
-        document.getElementById("inputTranscript").textContent = "";
-        document.getElementById("responseTranscript").textContent = "";
-        btnToggleRecording.disabled = true;
-        if (isRecording) {
-          stopRecording();
+    function stopAudioPlayback() {
+      if (currentSource) {
+        try { currentSource.stop(); } catch {}
+        currentSource.disconnect();
+        currentSource = null;
+      }
+      if (playbackContext) {
+        playbackContext.close();
+        playbackContext = null;
+      }
+      playbackAnalyser = null;
+      playbackDataArray = null;
+      nextChunkTime = 0;
+      currentChunkStartTime = 0;
+      if (!micAnalyser) stopWaveformAnimation();
+    }
+
+    function getPlayedDuration() {
+      if (!playbackContext || !currentChunkStartTime) return 0;
+      const elapsed = playbackContext.currentTime - currentChunkStartTime;
+      return elapsed > 0 ? Math.floor(elapsed * 1000) : 0;
+    }
+
+    btnStartSession.addEventListener("click", async () => {
+      const resp = await fetch("/start_session",{ method: "POST" });
+      const data = await resp.json();
+      sessionId = data.session_id;
+      sessionIdSpan.textContent = sessionId;
+      if (data.default_agent) {
+        currentAgent = data.default_agent;
+        agentSelect.value = currentAgent;
+      }
+      if (ws) ws.close();
+      ws = new WebSocket(`ws://${location.host}/ws/audio/${sessionId}`);
+      ws.onopen = () => {
+        btnToggleRecording.disabled = false;
+        initTtsPlayback();
+      };
+      ws.onmessage = evt => {
+        const msg = JSON.parse(evt.data);
+        switch (msg.type) {
+          case "input_audio_transcript":
+            inputTranscript.textContent = msg.text;
+            break;
+          case "response_audio_transcript_delta":
+          case "response_text_delta":
+            responseTranscript.textContent = msg.text;
+            break;
+          case "audio_delta":
+            if (currentItemId !== msg.item_id) {
+              stopAudioPlayback();
+              totalPlayedDuration = 0;
+              currentItemId = msg.item_id;
+              initTtsPlayback();
+            }
+            queueTtsChunk(msg.audio);
+            break;
+          case "user_audio_started":
+            if (currentItemId !== null) {
+              totalPlayedDuration += getPlayedDuration();
+              if (totalPlayedDuration > 0) {
+                sendWithAgent("user_interrupt", {
+                  duration_ms: totalPlayedDuration,
+                  item_id: currentItemId
+                });
+              }
+              totalPlayedDuration = 0;
+              stopAudioPlayback();
+              currentItemId = null;
+            }
+            break;
+          case "agent_switched":
+            if (msg.agent_name) {
+              currentAgent = msg.agent_name;
+              agentSelect.value = currentAgent;
+            }
+            stopAudioPlayback();
+            currentItemId = null;
+            inputTranscript.textContent = "";
+            responseTranscript.textContent = "";
+            break;
+          case "error":
+            console.error("Server error:", msg.message);
         }
-        if (ws) {
-          ws.send(JSON.stringify({ type: "disconnect" }));
-          ws.close();
-          ws = null;
+      };
+      ws.onclose = () => console.log("WebSocket closed");
+    });
+
+    btnStopSession.addEventListener("click", async () => {
+      if (!sessionId) return;
+      await fetch(`/stop_session?session_id=${sessionId}`, { method: "POST" });
+      sessionIdSpan.textContent = "N/A";
+      sessionId = null;
+      btnToggleRecording.disabled = true;
+      if (isRecording) stopRecording();
+      if (ws) {
+        sendWithAgent("disconnect");
+        ws.close();
+        ws = null;
+      }
+      stopAudioPlayback();
+      inputTranscript.textContent = "";
+      responseTranscript.textContent = "";
+    });
+
+    btnToggleRecording.addEventListener("click", () => {
+      if (!ws || !sessionId) return;
+      isRecording ? stopRecording() : startRecording();
+    });
+
+    btnSendText.addEventListener("click", () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (currentItemId !== null) {
+        totalPlayedDuration += getPlayedDuration();
+        if (totalPlayedDuration > 0) {
+          sendWithAgent("user_interrupt", {
+            duration_ms: totalPlayedDuration,
+            item_id: currentItemId
+          });
         }
+        totalPlayedDuration = 0;
         stopAudioPlayback();
         currentItemId = null;
-      });
-
-      btnToggleRecording.addEventListener("click", async () => {
-        if (!ws || !sessionId) return;
-        if (!isRecording) {
-          startRecording();
-        } else {
-          stopRecording();
-        }
-      });
-
-      // If the user clicks Send while audio is playing, send user_interrupt.
-      btnSendText.addEventListener("click", () => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-        // If we are currently playing TTS (currentItemId != null), that means
-        // the user is "interrupting" by typing text. Send "user_interrupt" now.
-        if (currentItemId !== null) {
-          // Accumulate partial chunk time
-          totalPlayedDuration += getPlayedDuration();
-          if (totalPlayedDuration > 0) {
-            ws.send(JSON.stringify({
-              type: "user_interrupt",
-              duration_ms: totalPlayedDuration,
-              item_id: currentItemId
-            }));
-          }
-          totalPlayedDuration = 0;
-          stopAudioPlayback();
-          currentItemId = null;
-        }
-
-        // Now send the user's text
-        const currentText = userText.value;
-        ws.send(JSON.stringify({ type: "user_input", text: currentText }));
-
-        // Display the typed text in the "inputTranscript" box
-        document.getElementById("inputTranscript").textContent = currentText;
+      }
+      const txt = userText.value.trim();
+      if (txt) {
+        sendWithAgent("user_input", { text: txt });
+        inputTranscript.textContent = txt;
         userText.value = "";
-      });
-
-      // If the user presses Enter, mimic the Send button
-      userText.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          btnSendText.click();
-        }
-      });
-
-      async function startRecording() {
-        isRecording = true;
-        btnToggleRecording.textContent = "Stop Recording";
-        recordIndicator.textContent = "Recording...";
-        try {
-          audioContext = new AudioContext({ sampleRate: 24000 });
-          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const input = audioContext.createMediaStreamSource(micStream);
-          processor = audioContext.createScriptProcessor(2048, 1, 1);
-          processor.onaudioprocess = (evt) => {
-            const float32Data = evt.inputBuffer.getChannelData(0);
-            const int16Data = float32ToInt16(float32Data);
-            const b64 = arrayBufferToBase64(int16Data.buffer);
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: "audio_chunk", audio: b64 }));
-            }
-          };
-          input.connect(processor);
-          processor.connect(audioContext.destination);
-        } catch (err) {
-          console.error("Error accessing microphone:", err);
-        }
       }
+    });
 
-      async function stopRecording() {
-        isRecording = false;
-        btnToggleRecording.textContent = "Start Recording";
-        recordIndicator.textContent = "Not Recording";
-        if (processor) {
-          processor.disconnect();
-          processor.onaudioprocess = null;
-          processor = null;
-        }
-        if (micStream) {
-          micStream.getTracks().forEach((t) => t.stop());
-          micStream = null;
-        }
-        if (audioContext) {
-          await audioContext.close();
-          audioContext = null;
-        }
+    userText.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnSendText.click();
       }
+    });
 
-      function initTtsPlayback() {
-        if (playbackContext) {
-          playbackContext.close();
-        }
-        playbackContext = new AudioContext({ sampleRate: 24000 });
-        nextChunkTime = 0;
-        currentChunkStartTime = 0;
-      }
-
-      function queueTtsChunk(audioB64) {
-        if (!playbackContext) {
-          initTtsPlayback();
-        }
-        const raw = atob(audioB64);
-        const pcmData = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) {
-          pcmData[i] = raw.charCodeAt(i);
-        }
-        const int16View = new Int16Array(pcmData.buffer);
-        const float32Data = new Float32Array(int16View.length);
-        for (let i = 0; i < int16View.length; i++) {
-          float32Data[i] = int16View[i] / 32767;
-        }
-        const audioBuf = playbackContext.createBuffer(1, float32Data.length, 24000);
-        audioBuf.copyToChannel(float32Data, 0, 0);
-
-        const source = playbackContext.createBufferSource();
-        source.buffer = audioBuf;
-        source.connect(playbackContext.destination);
-
-        const now = playbackContext.currentTime;
-        const startTime = nextChunkTime < now ? now : nextChunkTime;
-        // Record the start time for partial‐chunk calculations:
-        currentChunkStartTime = startTime;
-
-        source.start(startTime);
-        nextChunkTime = startTime + audioBuf.duration;
-        currentSource = source;
-
-        // If a chunk plays fully without interruption, add its duration at the end.
-        source.onended = () => {
-          // We fully played that chunk, so add its duration
-          totalPlayedDuration += Math.floor(audioBuf.duration * 1000);
-          // Reset chunk start (no partial chunk in progress anymore)
-          currentChunkStartTime = 0;
-          currentSource = null;
+    async function startRecording() {
+      isRecording = true;
+      btnToggleRecording.textContent = "Stop Recording";
+      recordIndicator.textContent = "Recording...";
+      try {
+        audioContext = new AudioContext({ sampleRate: 24000 });
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const src = audioContext.createMediaStreamSource(micStream);
+        processor = audioContext.createScriptProcessor(2048, 1, 1);
+        processor.onaudioprocess = e => {
+          const f32 = e.inputBuffer.getChannelData(0);
+          const i16 = float32ToInt16(f32);
+          const b64 = arrayBufferToBase64(i16.buffer);
+          sendWithAgent("audio_chunk", { audio: b64 });
         };
-      }
+        src.connect(processor);
+        processor.connect(audioContext.destination);
 
-      function float32ToInt16(float32Array) {
-        const int16Array = new Int16Array(float32Array.length);
-        for (let i = 0; i < float32Array.length; i++) {
-          let s = Math.max(-1, Math.min(1, float32Array[i]));
-          s = s < 0 ? s * 0x8000 : s * 0x7fff;
-          int16Array[i] = s;
-        }
-        return int16Array;
+        micAnalyser = audioContext.createAnalyser();
+        micAnalyser.fftSize = 128;
+        micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+        src.connect(micAnalyser);
+        startWaveformAnimation();
+      } catch (err) {
+        console.error("Mic error:", err);
       }
+    }
 
-      function arrayBufferToBase64(buffer) {
-        const binary = String.fromCharCode(...new Uint8Array(buffer));
-        return btoa(binary);
+    async function stopRecording() {
+      isRecording = false;
+      btnToggleRecording.textContent = "START/STOP RECORDING";
+      recordIndicator.textContent = "Not Recording";
+      if (processor) {
+        processor.disconnect();
+        processor.onaudioprocess = null;
       }
-    </script>
-  </body>
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+      }
+      if (audioContext) {
+        await audioContext.close();
+      }
+      micAnalyser = null;
+      micDataArray = null;
+      if (!playbackAnalyser) stopWaveformAnimation();
+    }
+
+    function initTtsPlayback() {
+      if (playbackContext) playbackContext.close();
+      playbackContext = new AudioContext({ sampleRate: 24000 });
+      nextChunkTime = 0;
+      currentChunkStartTime = 0;
+
+      playbackAnalyser = playbackContext.createAnalyser();
+      playbackAnalyser.fftSize = 128;
+      playbackDataArray = new Uint8Array(playbackAnalyser.frequencyBinCount);
+
+      startWaveformAnimation();
+    }
+
+    function queueTtsChunk(b64) {
+      if (!playbackContext) initTtsPlayback();
+      const raw = atob(b64);
+      const pcm = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) pcm[i] = raw.charCodeAt(i);
+      const i16 = new Int16Array(pcm.buffer);
+      const f32 = new Float32Array(i16.length);
+      for (let i = 0; i < i16.length; i++) {
+        f32[i] = i16[i] / 32767;
+      }
+      const buf = playbackContext.createBuffer(1, f32.length, 24000);
+      buf.copyToChannel(f32, 0);
+      const src = playbackContext.createBufferSource();
+      src.buffer = buf;
+      src.connect(playbackAnalyser);
+      playbackAnalyser.connect(playbackContext.destination);
+      const now = playbackContext.currentTime;
+      const start = nextChunkTime < now ? now : nextChunkTime;
+      currentChunkStartTime = start;
+      src.start(start);
+      nextChunkTime = start + buf.duration;
+      currentSource = src;
+      src.onended = () => {
+        totalPlayedDuration += Math.floor(buf.duration * 1000);
+        currentChunkStartTime = 0;
+        currentSource = null;
+      };
+    }
+
+    function float32ToInt16(f32) {
+      const out = new Int16Array(f32.length);
+      for (let i = 0; i < f32.length; i++) {
+        let s = Math.max(-1, Math.min(1, f32[i]));
+        out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      return out;
+    }
+
+    function arrayBufferToBase64(buf) {
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+  </script>
+</body>
 </html>

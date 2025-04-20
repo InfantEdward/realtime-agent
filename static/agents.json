@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Agente Clima",
+    "description": "Asistente de clima",
+    "config": {
+      "REALTIME_MODEL": "gpt-4o-mini-realtime-preview-2024-12-17",
+      "TEMPERATURE": 0.8,
+      "VOICE": "echo",
+      "TURN_DETECTION_CONFIG": {"type": "server_vad"},
+      "INPUT_AUDIO_TRANSCRIPT_CONFIG": {"model": "whisper-1"},
+      "TOOL_CHOICE": "auto",
+      "INSTRUCTIONS": "Eres un experto en clima de las ciudades. Utiliza la herramienta obtener_clima para proporcionar información sobre el clima actual y pronósticos. Eres el Agente Clima.",
+      "SWITCH_CONTEXT": "--------------\nAgente anterior: {current_agent}.\nRazón de cambio: {reason}\n--------------\nResumen de la conversación: {summary}",
+      "INITIAL_USER_MESSAGE": "Hola",
+      "SWITCH_USER_MESSAGE": "¡Hola de nuevo!",
+      "SWITCH_NOTIFICATION_MESSAGE": "El usuario ha sido transferido al siguiente agente.",
+      "TOOL_NAMES": ["obtener_clima", "cambia_agente"],
+      "TOOL_SCHEMA_LIST": null
+    }
+  },
+  {
+    "name": "Agente Recetas",
+    "description": "Asistente de recetas de cocina",
+    "config": {
+      "REALTIME_MODEL": "gpt-4o-mini-realtime-preview-2024-12-17",
+      "TEMPERATURE": 0.9,
+      "VOICE": "shimmer",
+      "TURN_DETECTION_CONFIG": {"type": "server_vad"},
+      "INPUT_AUDIO_TRANSCRIPT_CONFIG": {"model": "whisper-1"},
+      "TOOL_CHOICE": "auto",
+      "INSTRUCTIONS": "Eres un chef experto que ayuda a los usuarios a preparar recetas. También puedes indicarle el precio de un platillo usando la herramienta precio_de_platillo. Eres el Agente Recetas.",
+      "SWITCH_CONTEXT": "--------------\nAgente anterior: {current_agent}.\nRazón de cambio: {reason}\n--------------\nResumen de la conversación: {summary}",
+      "INITIAL_USER_MESSAGE": "Hola",
+      "SWITCH_USER_MESSAGE": "¡Hola de nuevo!",
+      "SWITCH_NOTIFICATION_MESSAGE": "El usuario ha sido transferido al siguiente agente.",
+      "TOOL_NAMES": ["precio_de_platillo", "cambia_agente"],
+      "TOOL_SCHEMA_LIST": null
+    }
+  },
+  {
+    "name": "Agente Finanzas",
+    "description": "Asistente financiero",
+    "config": {
+      "REALTIME_MODEL": "gpt-4o-mini-realtime-preview-2024-12-17",
+      "TEMPERATURE": 0.7,
+      "VOICE": "verse",
+      "TURN_DETECTION_CONFIG": {"type": "server_vad"},
+      "INPUT_AUDIO_TRANSCRIPT_CONFIG": {"model": "whisper-1"},
+      "TOOL_CHOICE": "auto",
+      "INSTRUCTIONS": "Eres un asesor financiero que ayuda a los usuarios a realizar cálculos financieros básicos, como intereses simples o compuestos. Utiliza la herramienta calcular_interes para realizar estos cálculos. Eres el Agente Finanzas.",
+      "SWITCH_CONTEXT": "--------------\nAgente anterior: {current_agent}.\nRazón de cambio: {reason}\n--------------\nResumen de la conversación: {summary}",
+      "INITIAL_USER_MESSAGE": "Hola, ¿puedes ayudarme con mis finanzas?",
+      "SWITCH_USER_MESSAGE": "¡Hola de nuevo! ¿Qué cálculo necesitas?",
+      "SWITCH_NOTIFICATION_MESSAGE": "El usuario ha sido transferido al siguiente agente.",
+      "TOOL_NAMES": ["calcular_interes", "cambia_agente"],
+      "TOOL_SCHEMA_LIST": null
+    }
+  }
+]
