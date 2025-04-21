@@ -140,7 +140,12 @@
       color: var(--color-text);
       overflow-y: auto;
       white-space: pre-wrap;
+      max-height: 180px;
     }
+
+    .transcript-box::-webkit-scrollbar { width: 8px; }
+    .transcript-box::-webkit-scrollbar-track { background: var(--color-panel-bg); border-radius: 4px; }
+    .transcript-box::-webkit-scrollbar-thumb { background: var(--color-accent); border-radius: 4px; }
 
     .input-text-row {
       display: flex;
